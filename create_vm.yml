@@ -1,0 +1,37 @@
+---
+- name: Create VM from Vcenter Template
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Clone Template to New Virtual Machine
+      community.vmware.vmware_guest:
+        validate_certs: false
+        name: "{{ vm_name }}"
+        template: # Input vCenter Template
+        datacenter: # Input vCenter Datacenter
+        resource_pool: # Input Resource Pool
+        folder: "/"
+        state: poweredon
+        wait_for_ip_address: true
+
+- name: Set VM IP and Hostname
+  hosts: 172.16.1.200 # This is the IP that is set for the template, if you use a different IP update here.
+  tasks:
+    - name: Update IP
+      ansible.builtin.lineinfile:
+        path: /etc/sysconfig/network-scripts/ifcfg-ens192
+        regex: "IPADDR=172.16.1.200" # Set to same IP as line 19
+        line: "IPADDR={{ new_IP }}"
+
+    - name: Update Hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.domain.local" # Update domain
+
+    - name: Reboot
+      ansible.builtin.command: "init 6"
+      ignore_errors: true
+
+    - name: Pause for 30 seconds to wait for reboot
+      ansible.builtin.pause:
+        seconds: "10"

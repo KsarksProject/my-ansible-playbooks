@@ -1,0 +1,57 @@
+---
+- name: Create Certificate 
+  hosts: ca
+  tasks: 
+    - name: Create Directory for certs
+      ansible.builtin.file: 
+        path: "/root/{{ hostname }}"
+        state: directory
+        mode: '0644'
+
+    - name: Create temporary password file 
+      ansible.builtin.copy: 
+        dest: "/root/provisionerpass.txt"
+        mode: '0644'
+        content: | 
+          {{ provisionerpass }}
+
+    - name: Create Certificate 
+      ansible.builtin.command: "step ca certificate {{ hostname }}.domain.local /root/{{ hostname }}/{{ hostname }}.domain.local.crt /root/{{ hostname }}/{{ hostname }}.domain.local.key --provisioner-password-file=/root/provisionerpass.txt"
+      args:
+        creates: "/root/{{ hostname }}/{{ hostname }}.domain.local.crt"
+
+    - name: Remove temporary file
+      ansible.builtin.file: 
+        path: /root/provisionerpass.txt
+        state: absent 
+
+    - name: Download cert to runner
+      ansible.builtin.fetch: 
+        src: "/root/{{ hostname }}/{{ hostname }}.domain.local.crt"
+        dest: "{{ hostname }}.domain.local.crt"
+        flat: true 
+
+    - name: Download key to runner
+      ansible.builtin.fetch: 
+        src: "/root/{{ hostname }}/{{ hostname }}.domain.local.key"
+        dest: "{{ hostname }}.domain.local.key"
+        flat: true 
+
+- name: Move certs over to host
+  hosts: "{{ hostname }}"
+  tasks: 
+    - name: Make /etc/pki/nginx/private driectory
+      ansible.builtin.file: 
+        path: "/etc/pki/nginx/private"
+        state: directory
+        mode: '0644'
+
+    - name: Copy cert over
+      ansible.builtin.copy: 
+        src: "{{ hostname }}.domain.local.crt"
+        dest: "/etc/pki/nginx/{{ hostname }}.domain.local.crt"
+
+    - name: Copy key over
+      ansible.builtin.copy: 
+        src: "{{ hostname }}.domain.local.key"
+        dest: "/etc/pki/nginx/private/{{ hostname }}.domain.local.key"

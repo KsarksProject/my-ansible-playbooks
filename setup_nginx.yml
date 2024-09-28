@@ -1,0 +1,19 @@
+---
+- name: Setup Nginx TLS
+  hosts: '{{ hostname | default("localhost") }}'
+  tasks:
+    - name: Install nginx
+      ansible.builtin.yum:
+        name: nginx
+        state: latest
+
+    - name: Copy config over # make sure to set proxy_address extra variable
+      ansible.builtin.template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

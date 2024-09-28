@@ -1,0 +1,25 @@
+---
+- hosts: '{{ hostname | default("localhost") }}'
+  tasks:
+    - name: Update Package
+      ansible.builtin.yum:
+        name: "*"
+        state: latest
+
+    - name: Make sure yum-utils is installed
+      ansible.builtin.yum:
+        name: "yum-utils"
+        state: installed
+
+    - name: See if the server needs rebooting
+      ansible.builtin.shell: "needs-restarting -r > /dev/null; echo $?"
+      register: needsRestarting
+
+    - name: Debug
+      ansible.builtin.debug:
+        msg: "{{ needsRestarting }}"
+
+    - name: Reboot machine if needs restarting
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: needsRestarting.stdout == "1"
