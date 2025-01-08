@@ -28,12 +28,12 @@
         node: proxmox
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: "< Input IP Here >"
+        api_host: "192.168.88.200"
         api_port: 8006
         storage: "local-lvm"
         full: true
-        pool: "< Input Pool Name if used >"
-        clone: "< Input Template name"
+        pool: "Home"
+        clone: "Ubuntu"
         name: "{{ vm_name }}"
 
     - name: wait 10 seconds
@@ -45,9 +45,9 @@
         node: proxmox
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: "< Input IP Here >"
+        api_host: "192.168.88.200"
         api_port: 8006
-        pool: "< Input Pool Name if used >"
+        pool: "Home"
         name: "{{ vm_name }}"
         state: started
 
@@ -66,7 +66,7 @@
 
     - name: Update Hostname
       ansible.builtin.hostname:
-        name: "{{ hostname }}.dragon.local"
+        name: "{{ hostname }}.srb01"
 
     - name: Reboot
       ansible.builtin.command: "init 6"
