@@ -56,7 +56,7 @@
         seconds: 20
 
 - name: Set VM IP and Hostname
-  hosts: 172.16.1.200
+  hosts: 172.28.1.7
   tasks:
     - name: Update IP
       ansible.builtin.lineinfile:
