@@ -61,12 +61,12 @@
     - name: Update IP
       ansible.builtin.lineinfile:
         path: /etc/sysconfig/network-scripts/ifcfg-vmbr1
-        regex: "IPADDR=172.16.1.200"
+        regex: "IPADDR=172.28.1.7"
         line: "IPADDR={{ new_IP }}"
 
     - name: Update Hostname
       ansible.builtin.hostname:
-        name: "{{ hostname }}.dragon.local"
+        name: "{{ hostname }}.cvd.local"
 
     - name: Reboot
       ansible.builtin.command: "init 6"
