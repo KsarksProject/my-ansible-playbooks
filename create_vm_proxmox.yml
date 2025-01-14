@@ -25,15 +25,15 @@
 
     - name: Clone proxmox template
       community.general.proxmox_kvm:
-        node: proxmox
-        api_user: "root@pam"
+        node: pve-in
+        api_user: "a.bardashevich@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: "192.168.88.200"
+        api_host: 172.18.0.251
         api_port: 8006
         storage: "local-lvm"
         full: true
-        pool: "Home"
-        clone: "Ubuntu"
+#        pool: "< Input Pool Name if used >"
+        clone: "centos"
         name: "{{ vm_name }}"
 
     - name: wait 10 seconds
@@ -45,9 +45,9 @@
         node: proxmox
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: "192.168.88.200"
+        api_host: 172.18.0.251
         api_port: 8006
-        pool: "Home"
+#        pool: "< Input Pool Name if used >"
         name: "{{ vm_name }}"
         state: started
 
@@ -56,17 +56,17 @@
         seconds: 20
 
 - name: Set VM IP and Hostname
-  hosts: 192.168.88.200
+  hosts: 172.16.1.200
   tasks:
     - name: Update IP
       ansible.builtin.lineinfile:
-        path: /etc/network/interfaces/enp6s18
-        regex: "IPADDR=192.68.88.200"
+        path: /etc/sysconfig/network-scripts/ifcfg-vmbr1
+        regex: "IPADDR=172.16.1.200"
         line: "IPADDR={{ new_IP }}"
 
     - name: Update Hostname
       ansible.builtin.hostname:
-        name: "{{ hostname }}.srb01"
+        name: "{{ hostname }}.dragon.local"
 
     - name: Reboot
       ansible.builtin.command: "init 6"
