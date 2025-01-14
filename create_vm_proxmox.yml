@@ -33,7 +33,7 @@
         storage: "local-lvm"
         full: true
 #        pool: "< Input Pool Name if used >"
-        clone: "centos"
+        clone: "centOStemplate"
         name: "{{ vm_name }}"
 
     - name: wait 10 seconds
