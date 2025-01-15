@@ -47,7 +47,7 @@
 
     - name: Start VM
       community.general.proxmox_kvm:
-        node: proxmox
+        node: pve-in
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
         api_host: 172.28.0.251
