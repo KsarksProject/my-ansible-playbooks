@@ -38,7 +38,7 @@
         storage: "local-lvm"
         full: true
 #        pool: "< Input Pool Name if used >"
-        clone: "centOStemplate"
+        clone: "cenOStemplate01"
         name: "{{ vm_name }}"
 
     - name: Wait for 200 seconds
