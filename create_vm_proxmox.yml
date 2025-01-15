@@ -32,8 +32,9 @@
         node: pve-in
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: 172.18.0.251
+        api_host: 172.28.0.251
         api_port: 8006
+        validate_certs: false
         storage: "local-lvm"
         full: true
 #        pool: "< Input Pool Name if used >"
@@ -49,7 +50,7 @@
         node: proxmox
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
-        api_host: 172.18.0.251
+        api_host: 172.28.0.251
         api_port: 8006
 #        pool: "< Input Pool Name if used >"
         name: "{{ vm_name }}"
