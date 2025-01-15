@@ -40,9 +40,9 @@
         clone: "CloneTemplate"
         name: "{{ vm_name }}"
 
-    - name: Wait for 180 seconds
+    - name: Wait for 250 seconds
       ansible.builtin.pause:
-        seconds: 180
+        seconds: 250
 
     - name: Start VM
       community.general.proxmox_kvm:
