@@ -61,12 +61,12 @@
         timeout: 300
 
 - name: Set VM IP and Hostname
-  hosts: 172.16.1.200
+  hosts: 172.28.1.200
   tasks:
     - name: Update IP
       ansible.builtin.lineinfile:
         path: /etc/sysconfig/network-scripts/ifcfg-ens18
-        regex: "IPADDR=172.16.1.200"
+        regex: "IPADDR=172.28.1.200"
         line: "IPADDR={{ new_IP }}"
 
     - name: Restart network service
