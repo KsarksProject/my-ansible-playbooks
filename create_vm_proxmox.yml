@@ -41,9 +41,9 @@
         clone: "centOStemplate"
         name: "{{ vm_name }}"
 
-    - name: Wait for 160 seconds
+    - name: Wait for 200 seconds
       ansible.builtin.pause:
-        seconds: 160
+        seconds: 200
 
     - name: Start VM
       community.general.proxmox_kvm:
@@ -56,9 +56,9 @@
         name: "{{ vm_name }}"
         state: started
 
-    - name: Wait for 20 seconds
+    - name: Wait for 30 seconds
       ansible.builtin.pause:
-        seconds: 20
+        seconds: 30
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.7
