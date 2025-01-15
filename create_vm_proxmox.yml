@@ -40,20 +40,21 @@
         clone: "CentOsTemplate"
         name: "{{ vm_name }}"
         timeout: 250
+        startup: yes
 
     - name: Wait for 30 seconds
       ansible.builtin.pause:
         seconds: 30
 
-    - name: Start VM
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        name: "{{ vm_name }}"
-        state: started
+#    - name: Start VM
+#      community.general.proxmox_kvm:
+#        node: pve-in
+#        api_user: "root@pam"
+#        api_password: "{{ proxmox_pass }}"
+#        api_host: 172.28.0.251
+#        api_port: 8006
+#        name: "{{ vm_name }}"
+#        state: started
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.200
