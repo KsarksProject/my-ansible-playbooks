@@ -65,7 +65,7 @@
   tasks:
     - name: Update IP
       ansible.builtin.lineinfile:
-        path: /etc/sysconfig/network-scripts/ifcfg-vmbr1
+        path: /etc/sysconfig/network-scripts/ifcfg-ens18
         regex: "^IPADDR="
         line: "IPADDR={{ new_IP }}"
         backup: yes
