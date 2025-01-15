@@ -37,7 +37,6 @@
         validate_certs: false
         storage: "local-lvm"
         full: true
-#        pool: "< Input Pool Name if used >"
         clone: "CloneTemplate"
         name: "{{ vm_name }}"
 
@@ -52,7 +51,6 @@
         api_password: "{{ proxmox_pass }}"
         api_host: 172.28.0.251
         api_port: 8006
-#        pool: "< Input Pool Name if used >"
         name: "{{ vm_name }}"
         state: started
 
@@ -63,12 +61,14 @@
 - name: Set VM IP and Hostname
   hosts: 172.28.1.200
   tasks:
-    - name: Update IP
-      ansible.builtin.lineinfile:
-        path: /etc/sysconfig/network-scripts/ifcfg-ens18
-        regex: "^IPADDR="
-        line: "IPADDR={{ new_IP }}"
+    - name: Update IP and network configuration (Netplan)
+      ansible.builtin.template:
+        src: netplan_template.yaml.j2
+        dest: /etc/netplan/01-netcfg.yaml
         backup: yes
+
+    - name: Apply Netplan configuration
+      ansible.builtin.command: "netplan apply"
 
     - name: Update Hostname
       ansible.builtin.hostname:
