@@ -2,28 +2,30 @@
 - name: Create VM from Proxmox Template
   hosts: 172.28.0.251
   tasks:
-    - name: Install python3-pip
+    - name: Install necessary packages via apt
       ansible.builtin.apt:
-        name: python3-pip
+        name:
+          - python3-pip
+          - python3-setuptools
+          - python3-venv
         state: present
       become: yes
 
-    - name: Install setuptools module via pip
-      ansible.builtin.pip:
-        name: setuptools
-        state: present
+    - name: Create virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/venv
+      args:
+        creates: /opt/venv
 
-    - name: Install requests module via pip
-      ansible.builtin.pip:
-        name: requests
-        state: present
+    - name: Install requests module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install requests
 
-    - name: Install proxmoxer module via pip
-      ansible.builtin.pip:
-        name: proxmoxer
-        state: present
+    - name: Install proxmoxer module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install proxmoxer
 
-    - name: Clone proxmox template
+    - name: Clone Proxmox template
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -32,13 +34,14 @@
         api_port: 8006
         storage: "local-lvm"
         full: true
-#        pool: "< Input Pool Name if used >"
         clone: "centOStemplate"
         name: "{{ vm_name }}"
 
-    - name: wait 10 seconds
-      ansible.builtin.pause:
-        seconds: 10
+    - name: Wait for VM to boot
+      ansible.builtin.wait_for:
+        host: 172.28.1.7
+        port: 22
+        timeout: 300
 
     - name: Start VM
       community.general.proxmox_kvm:
@@ -47,13 +50,8 @@
         api_password: "{{ proxmox_pass }}"
         api_host: 172.18.0.251
         api_port: 8006
-#        pool: "< Input Pool Name if used >"
         name: "{{ vm_name }}"
         state: started
-
-    - name: wait 20 seconds
-      ansible.builtin.pause:
-        seconds: 20
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.7
@@ -61,17 +59,21 @@
     - name: Update IP
       ansible.builtin.lineinfile:
         path: /etc/sysconfig/network-scripts/ifcfg-vmbr1
-        regex: "IPADDR=172.28.1.7"
+        regex: "^IPADDR="
         line: "IPADDR={{ new_IP }}"
+        backup: yes
 
     - name: Update Hostname
       ansible.builtin.hostname:
         name: "{{ hostname }}.cvd.local"
 
-    - name: Reboot
-      ansible.builtin.command: "init 6"
-      ignore_errors: true
+    - name: Reboot VM
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      become: yes
 
-    - name: Pause for 30 seconds to wait for reboot
-      ansible.builtin.pause:
-        seconds: "10"
+    - name: Wait for VM to become available
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 22
+        timeout: 300
