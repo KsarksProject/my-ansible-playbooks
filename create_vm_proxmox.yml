@@ -40,7 +40,7 @@
         clone: "CentOsTemplate"
         name: "{{ vm_name }}"
         timeout: 250
-        startup: yes
+        startup: True
 
     - name: Wait for 30 seconds
       ansible.builtin.pause:
