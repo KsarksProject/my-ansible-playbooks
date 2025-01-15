@@ -34,10 +34,10 @@
         api_password: "{{ proxmox_pass }}"
         api_host: 172.28.0.251
         api_port: 8006
-        validate_certs: false
+#        validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "CloneTemplate"
+        clone: "CentOsTemplate"
         name: "{{ vm_name }}"
 
     - name: Wait for 250 seconds
@@ -61,16 +61,19 @@
         timeout: 300
 
 - name: Set VM IP and Hostname
-  hosts: 172.28.1.200
+  hosts: 172.16.1.200
   tasks:
-    - name: Update IP and network configuration (Netplan)
-      ansible.builtin.template:
-        src: netplan_template.yaml.j2
-        dest: /etc/netplan/01-netcfg.yaml
-        backup: yes
+    - name: Update IP
+      ansible.builtin.lineinfile:
+        path: /etc/sysconfig/network-scripts/ifcfg-ens18
+        regex: "IPADDR=172.16.1.200"
+        line: "IPADDR={{ new_IP }}"
 
-    - name: Apply Netplan configuration
-      ansible.builtin.command: "netplan apply"
+    - name: Restart network service
+      ansible.builtin.service:
+        name: network
+        state: restarted
+      become: yes
 
     - name: Update Hostname
       ansible.builtin.hostname:
