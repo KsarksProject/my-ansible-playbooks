@@ -1,0 +1,42 @@
+---
+- name: Create and configure VM from Windows Server 2022 Template
+  hosts: pve-in
+    - name: Clone VM from template
+      community.general.proxmox_kvm:
+        api_host: "172.18.0.251"
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_port: 8006
+        validate_certs: false
+        node: "pve-in"
+        clone: "{{ template_id }}"
+
+    - name: Start cloned VM
+      community.general.proxmox_kvm:
+        api_host: "172.18.0.251"
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_port: 8006
+        validate_certs: false
+        node: "pve-in"
+        vmid: "{{ vm_id }}"
+        state: "started"
+
+    - name: Wait for VM to boot
+      ansible.builtin.pause:
+        seconds: 60
+
+    - name: Configure IP on new VM
+      hosts: "{{ new_ip }}"
+      tasks:
+        - name: Set new IP address
+          ansible.windows.win_shell: |
+            netsh interface ip set address "Ethernet" static {{ new_ip }} 255.255.255.0 {{ gateway }}
+            netsh interface ip set dns "Ethernet" static {{ dns }}
+
+        - name: Verify new IP configuration
+          ansible.windows.win_shell: ipconfig
+          register: ipconfig_output
+
+        - debug:
+            var: ipconfig_output.stdout
