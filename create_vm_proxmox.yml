@@ -39,6 +39,7 @@
         full: true
         clone: "CentOsTemplate"
         name: "{{ vm_name }}"
+        timeout: 250
 
     - name: Wait for 250 seconds
       ansible.builtin.pause:
