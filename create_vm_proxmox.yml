@@ -54,9 +54,11 @@
         name: "{{ vm_name }}"
         state: started
 
-    - name: Wait for 30 seconds
-      ansible.builtin.pause:
-        seconds: 30
+    - name: Wait for VM to become reachable
+      ansible.builtin.wait_for:
+        host: "{{ new_vm_ip }}"
+        port: 22
+        timeout: 300
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.200
