@@ -1,6 +1,6 @@
 ---
 - name: Create VM from Proxmox Template
-  hosts: proxmox
+  hosts: 172.18.0.251
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
