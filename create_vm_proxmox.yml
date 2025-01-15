@@ -38,12 +38,12 @@
         storage: "local-lvm"
         full: true
 #        pool: "< Input Pool Name if used >"
-        clone: "cenOStemplate01"
+        clone: "CloneTemplate"
         name: "{{ vm_name }}"
 
-    - name: Wait for 600 seconds
+    - name: Wait for 30 seconds
       ansible.builtin.pause:
-        seconds: 600
+        seconds: 30
 
     - name: Start VM
       community.general.proxmox_kvm:
@@ -56,9 +56,9 @@
         name: "{{ vm_name }}"
         state: started
 
-    - name: Wait for 30 seconds
+    - name: Wait for 50 seconds
       ansible.builtin.pause:
-        seconds: 30
+        seconds: 50
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.200
