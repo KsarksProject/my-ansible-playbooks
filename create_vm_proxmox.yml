@@ -41,9 +41,9 @@
         clone: "cenOStemplate01"
         name: "{{ vm_name }}"
 
-    - name: Wait for 200 seconds
+    - name: Wait for 600 seconds
       ansible.builtin.pause:
-        seconds: 200
+        seconds: 600
 
     - name: Start VM
       community.general.proxmox_kvm:
