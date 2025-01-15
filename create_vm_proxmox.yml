@@ -41,10 +41,6 @@
         name: "{{ vm_name }}"
         timeout: 250
 
-    - name: Wait for 250 seconds
-      ansible.builtin.pause:
-        seconds: 250
-
     - name: Start VM
       community.general.proxmox_kvm:
         node: pve-in
