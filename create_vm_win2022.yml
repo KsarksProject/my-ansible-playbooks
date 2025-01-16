@@ -36,7 +36,7 @@
         api_port: 8006
         validate_certs: false
         storage: "local-lvm"
-        full: true
+        full: false
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
         timeout: 360
