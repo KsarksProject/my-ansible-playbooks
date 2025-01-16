@@ -1,0 +1,50 @@
+- name: Install Elasticsearch 7.17.23
+  hosts: '{{ hostname | default("localhost") }}'
+  become: true
+  tasks:
+    - name: Install required packages
+      ansible.builtin.yum:
+        name:
+          - java-11-openjdk
+          - java-11-openjdk-devel
+        state: present
+
+    - name: Add Elasticsearch GPG key
+      ansible.builtin.rpm_key:
+        state: present
+        key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+    - name: Add Elasticsearch repository
+      ansible.builtin.copy:
+        dest: /etc/yum.repos.d/elasticsearch.repo
+        content: |
+          [elasticsearch]
+          name=Elasticsearch repository for 7.x packages
+          baseurl=https://artifacts.elastic.co/packages/7.x/yum
+          gpgcheck=1
+          gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+          enabled=1
+          autorefresh=1
+          type=rpm-md
+      mode: '0644'
+
+    - name: Install Elasticsearch
+      ansible.builtin.yum:
+        name: elasticsearch-7.17.23
+        state: present
+
+    - name: Configure Elasticsearch to start on boot
+      ansible.builtin.service:
+        name: elasticsearch
+        state: started
+        enabled: true
+
+    - name: Verify Elasticsearch service status
+      ansible.builtin.shell:
+        cmd: systemctl is-active elasticsearch
+      register: elasticsearch_status
+      failed_when: "'active' not in elasticsearch_status.stdout"
+
+    - name: Print Elasticsearch service status
+      ansible.builtin.debug:
+        msg: "Elasticsearch service is {{ elasticsearch_status.stdout }}."
