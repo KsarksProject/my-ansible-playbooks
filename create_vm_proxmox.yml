@@ -72,6 +72,12 @@
         regex: "IPADDR=172.28.1.200"
         line: "IPADDR={{ new_IP }}"
 
+    - name: Restart network service
+      ansible.builtin.service:
+        name: network
+        state: restarted
+      become: yes
+
     - name: Update Hostname
       ansible.builtin.hostname:
         name: "{{ hostname }}.cvd.local"
