@@ -39,12 +39,12 @@
         full: true
         clone: "CentOS7Template"
         name: "{{ vm_name }}"
-        timeout: 30
+#        timeout: 10
         startup: yes
-#
-#    - name: Wait for 50 seconds
-#      ansible.builtin.pause:
-#        seconds: 50
+
+    - name: Wait for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
 
     - name: Start VM
       community.general.proxmox_kvm:
@@ -57,11 +57,11 @@
         name: "{{ vm_name }}"
         state: started
 
-    - name: Wait for VM to be reachable
-      wait_for:
-        host: 172.28.1.200
-        port: 22
-        timeout: 40
+#    - name: Wait for VM to be reachable
+#      wait_for:
+#        host: 172.28.1.200
+#        port: 22
+#        timeout: 40
 
 - name: Set VM Hostname and IP
   hosts: 172.28.1.200
