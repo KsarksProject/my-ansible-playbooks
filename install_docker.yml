@@ -1,20 +1,16 @@
----
 - name: Install Docker and Docker Compose
   hosts: '{{ hostname | default("localhost") }}'
   tasks:
+    - name: Install yum-utils for repository management
+      ansible.builtin.yum:
+        name: yum-utils
+        state: present
+
     - name: Add Docker Repository
       ansible.builtin.command:
-        cmd: yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+        cmd: yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
       args:
         creates: /etc/yum.repos.d/docker-ce.repo
-
-    - name: Install required packages for Docker repository management
-      ansible.builtin.yum:
-        name:
-          - yum-utils
-          - device-mapper-persistent-data
-          - lvm2
-        state: present
 
     - name: Install Docker CE
       ansible.builtin.yum:
