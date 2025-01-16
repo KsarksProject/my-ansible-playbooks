@@ -75,9 +75,3 @@
     - name: Update Hostname
       ansible.builtin.hostname:
         name: "{{ hostname }}.cvd.local"
-
-    - name: Reboot
-      ansible.builtin.reboot:
-        reboot_timeout: 120
-      become: yes
-
