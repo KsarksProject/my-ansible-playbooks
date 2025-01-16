@@ -34,7 +34,7 @@
         api_password: "{{ proxmox_pass }}"
         api_host: 172.28.0.251
         api_port: 8006
-#        validate_certs: false
+        validate_certs: false
         storage: "local-lvm"
         full: true
         clone: "CentOsTemplate"
@@ -42,9 +42,9 @@
         timeout: 250
         startup: yes
 
-    - name: Wait for 30 seconds
+    - name: Wait for 50 seconds
       ansible.builtin.pause:
-        seconds: 30
+        seconds: 50
 
     - name: Start VM
       community.general.proxmox_kvm:
