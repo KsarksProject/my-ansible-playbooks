@@ -68,7 +68,7 @@
   tasks:
     - name: Update IP
       ansible.builtin.lineinfile:
-        path: /etc/sysconfig/network-scripts/ifcfg-ens18
+        path: /etc/sysconfig/network-scripts/ifcfg-eth0
         regex: "IPADDR=172.28.1.200"
         line: "IPADDR={{ new_IP }}"
 
