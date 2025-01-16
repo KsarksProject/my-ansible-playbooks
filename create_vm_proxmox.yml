@@ -39,7 +39,7 @@
         full: true
         clone: "CentOS7Template"
         name: "{{ vm_name }}"
-        timeout: 250
+        timeout: 120
         startup: yes
 
     - name: Wait for 50 seconds
@@ -56,6 +56,12 @@
         validate_certs: false
         name: "{{ vm_name }}"
         state: started
+
+- name: Wait for VM to be reachable
+  wait_for:
+    host: 172.28.1.200
+    port: 22
+    timeout: 60
 
 - name: Set VM IP and Hostname
   hosts: 172.28.1.200
