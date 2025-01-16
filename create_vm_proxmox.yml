@@ -37,7 +37,7 @@
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "CentOsTemplate"
+        clone: "CentOS7Template"
         name: "{{ vm_name }}"
         timeout: 250
         startup: yes
