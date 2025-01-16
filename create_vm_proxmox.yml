@@ -39,12 +39,12 @@
         full: true
         clone: "CentOS7Template"
         name: "{{ vm_name }}"
-        timeout: 60
+        timeout: 30
         startup: yes
-
-    - name: Wait for 50 seconds
-      ansible.builtin.pause:
-        seconds: 50
+#
+#    - name: Wait for 50 seconds
+#      ansible.builtin.pause:
+#        seconds: 50
 
     - name: Start VM
       community.general.proxmox_kvm:
@@ -75,13 +75,13 @@
 
     - name: Update Hostname
       ansible.builtin.hostname:
-        name: "{{ hostname }}.dragon.local"
+        name: "{{ hostname }}.cvd.local"
 
     - name: Reboot
       ansible.builtin.command: "init 6"
       ignore_errors: true
-
-    - name: Pause for 30 seconds to wait for reboot
-      ansible.builtin.pause:
-        seconds: "10"
+#
+#    - name: Pause for 30 seconds to wait for reboot
+#      ansible.builtin.pause:
+#        seconds: "10"
 
