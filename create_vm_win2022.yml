@@ -1,9 +1,9 @@
 ---
-- name: Create VM from Proxmox Template
+- name: Create VM from Proxmox Template (T-WIN-2022)
   hosts: 172.28.0.251
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
-  tasks:
+    tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
         name:
@@ -27,7 +27,7 @@
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
 
-    - name: Clone Proxmox template
+    - name: Clone Proxmox template (T-WIN-2022)
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -37,51 +37,43 @@
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "CentOS7Template"
+        clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-#        timeout: 10
+        timeout: 300
         startup: yes
 
-    - name: Wait for 30 seconds
+    - name: Wait for VM to boot
       ansible.builtin.pause:
-        seconds: 30
+        seconds: 60
 
-    - name: Start VM
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-        state: started
-
-    - name: Wait for VM to be reachable
-      wait_for:
-        host: 172.28.1.200
+    - name: Wait for VM to become reachable via SSH
+      ansible.builtin.wait_for:
+        host: "{{ new_IP }}"
         port: 22
-        timeout: 40
+        timeout: 300
 
-- name: Set VM Hostname and IP
-  hosts: 172.28.1.200
+- name: Configure VM (T-WIN-2022)
+  hosts: "{{ new_IP }}"
+  vars:
+    ansible_connection: ssh
   tasks:
-    - name: Update IP
-      ansible.builtin.lineinfile:
-        path: /etc/sysconfig/network-scripts/ifcfg-eth0
-        regex: "^IPADDR="
-        line: "IPADDR={{ new_IP }}"
-        backup: yes
+    - name: Update IP address and subnet mask
+      ansible.windows.win_shell:
+        cmd: |
+          New-NetIPAddress -InterfaceAlias "Ethernet" `
+                           -IPAddress "{{ new_IP }}" `
+      become: yes
 
     - name: Update Hostname
-      ansible.builtin.hostname:
-        name: "{{ hostname }}.cvd.local"
+      ansible.windows.win_hostname:
+        name: "{{ hostname }}"
 
-    - name: Reboot
-      ansible.builtin.command: "init 6"
-      ignore_errors: true
-#
-#    - name: Pause for 30 seconds to wait for reboot
-#      ansible.builtin.pause:
-#        seconds: "10"
+    - name: Reboot VM to apply changes
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
 
+    - name: Wait for VM to become reachable after reboot
+      ansible.builtin.wait_for:
+        host: "{{ new_IP }}"
+        port: 22
+        timeout: 300

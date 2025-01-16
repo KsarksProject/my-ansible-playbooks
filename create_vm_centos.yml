@@ -1,0 +1,83 @@
+---
+- name: Create VM from Proxmox Template
+  hosts: 172.28.0.251
+  vars:
+    ansible_python_interpreter: /opt/venv/bin/python
+  tasks:
+    - name: Install necessary packages via apt
+      ansible.builtin.apt:
+        name:
+          - python3-pip
+          - python3-setuptools
+          - python3-venv
+        state: present
+      become: yes
+
+    - name: Create virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/venv
+      args:
+        creates: /opt/venv
+
+    - name: Install requests module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install requests
+
+    - name: Install proxmoxer module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install proxmoxer
+
+    - name: Clone Proxmox template
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        storage: "local-lvm"
+        full: true
+        clone: "CentOS7Template"
+        name: "{{ vm_name }}"
+        startup: yes
+
+    - name: Wait for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Start VM
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
+        state: started
+
+    - name: Wait for VM to be reachable
+      wait_for:
+        host: 172.28.1.200
+        port: 22
+        timeout: 40
+
+- name: Set VM Hostname and IP
+  hosts: 172.28.1.200
+  tasks:
+    - name: Update IP
+      ansible.builtin.lineinfile:
+        path: /etc/sysconfig/network-scripts/ifcfg-eth0
+        regex: "^IPADDR="
+        line: "IPADDR={{ new_IP }}"
+        backup: yes
+
+    - name: Update Hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.cvd.local"
+
+    - name: Reboot
+      ansible.builtin.command: "init 6"
+      ignore_errors: true
+
+
