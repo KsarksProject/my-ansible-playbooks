@@ -66,10 +66,6 @@
 - name: Set VM Hostname and IP
   hosts: 172.28.1.200
   tasks:
-    - name: Update Hostname
-      ansible.builtin.hostname:
-        name: "{{ hostname }}.cvd.local"
-
     - name: Update IP
       ansible.builtin.lineinfile:
         path: /etc/sysconfig/network-scripts/ifcfg-eth0
@@ -77,9 +73,15 @@
         line: "IPADDR={{ new_IP }}"
         backup: yes
 
-    - name: Restart network service to apply new IP
-      ansible.builtin.service:
-        name: network
-        state: restarted
-      become: yes
+    - name: Update Hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.dragon.local"
+
+    - name: Reboot
+      ansible.builtin.command: "init 6"
+      ignore_errors: true
+
+    - name: Pause for 30 seconds to wait for reboot
+      ansible.builtin.pause:
+        seconds: "10"
 
