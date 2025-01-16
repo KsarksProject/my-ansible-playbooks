@@ -3,7 +3,7 @@
   hosts: 172.28.0.251
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
-    tasks:
+  tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
         name:
@@ -39,7 +39,6 @@
         full: true
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-        timeout: 300
         startup: yes
 
 #    - name: Wait for VM to boot

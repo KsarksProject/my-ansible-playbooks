@@ -1,5 +1,5 @@
 - name: Install Elasticsearch 7.17.23
-  hosts: '{{ hostname | default("localhost") }}'
+  hosts: '{{ hostname ) }}'
   become: true
   tasks:
     - name: Install required packages

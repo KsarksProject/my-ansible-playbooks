@@ -1,5 +1,5 @@
 - name: Install Docker and Docker Compose
-  hosts: '{{ hostname | default("localhost") }}'
+  hosts: '{{ hostname }}'
   tasks:
     - name: Install yum-utils for repository management
       ansible.builtin.yum:
