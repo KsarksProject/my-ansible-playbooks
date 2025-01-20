@@ -39,7 +39,6 @@
         api_host: 172.28.0.251
         api_port: 8006
         validate_certs: false
-        storage: "local-lvm"
         full: false
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
@@ -60,13 +59,13 @@
   hosts: "{{ new_IP }}"
   vars:
     ansible_connection: ssh
-    ansible_user: "{{ win_user }}"
+    ansible_user: Администратор
     ansible_password: "{{ win_password }}"
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   tasks:
     - name: Update IP address and subnet mask
       ansible.builtin.shell: |
-        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
+        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.255.0 192.168.1.1
       become: yes
 
     - name: Update Hostname
