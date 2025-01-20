@@ -38,18 +38,18 @@
         full: false
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-        timeout: 360
+#        timeout: 360
         startup: yes
 
     - name: Wait for VM to boot
       ansible.builtin.pause:
         seconds: 60
 
-    - name: Wait for VM to become reachable via SSH
-      ansible.builtin.wait_for:
-        host: "{{ new_IP }}"
-        port: 22  # Default SSH port
-        timeout: 300
+#    - name: Wait for VM to become reachable via SSH
+#      ansible.builtin.wait_for:
+#        host: "{{ new_IP }}"
+#        port: 22  # Default SSH port
+#        timeout: 300
 
 - name: Configure VM (T-WIN-2022)
   hosts: "{{ new_IP }}"
