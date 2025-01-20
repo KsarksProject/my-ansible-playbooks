@@ -1,18 +1,17 @@
 ---
 - name: Create VM from Proxmox Template (T-WIN-2022)
-  hosts: localhost
-  become: yes  # Использование sudo
+  hosts: 172.28.0.251
   vars:
-    ansible_python_interpreter: /usr/bin/python3  # Указание пути к интерпретатору Python
+    ansible_python_interpreter: /opt/venv/bin/python
   tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
-        update_cache: yes
         name:
           - python3-pip
           - python3-setuptools
           - python3-venv
         state: present
+      become: yes
 
     - name: Create virtual environment
       ansible.builtin.command:
@@ -23,14 +22,10 @@
     - name: Install requests module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install requests
-      args:
-        creates: /opt/venv/bin/requests
 
     - name: Install proxmoxer module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
-      args:
-        creates: /opt/venv/bin/proxmoxer
 
     - name: Clone Proxmox template (T-WIN-2022)
       community.general.proxmox_kvm:
