@@ -2,7 +2,7 @@
 - name: Create VM from Proxmox Template (T-WIN-2022)
   hosts: 172.28.0.251
   vars:
-    ansible_python_interpreter: /opt/venv/bin/python
+    ansible_python_interpreter: "{{ ansible_playbook_python | default('/opt/venv/bin/python') }}"
   tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
@@ -38,46 +38,36 @@
         full: false
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-        state: present
+        state: started
       register: cloned_vm
 
-    - name: Start cloned VM
-      community.general.proxmox_kvm:
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        validate_certs: false
-        vmid: "{{ cloned_vm.newid }}"
-        state: started
-
-    - name: Wait for VM to boot
-      ansible.builtin.pause:
-        seconds: 120
-
-    - name: Get new VM IP address
-      community.general.proxmox_kvm:
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        validate_certs: false
-        vmid: "{{ cloned_vm.newid }}"
-      register: vm_info
-
-    - name: Set VM IP address
-      set_fact:
-        new_IP: "{{ vm_info.networks[0].ip }}"
+    - name: Debug cloned VM information
+      debug:
+        var: cloned_vm
 
 - name: Configure VM (T-WIN-2022)
   hosts: "{{ new_IP }}"
   vars:
     ansible_connection: ssh
     ansible_user: "Администратор"
-    ansible_password: "{{ win_password }}"
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_password: !vault |
+      $ANSIBLE_VAULT;1.1;AES256
+      EncryptedPasswordPlaceholder
+    ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
   tasks:
+    - name: Check network interfaces
+      ansible.builtin.command: |
+        netsh interface show interface
+      register: interface_check
+
+    - name: Debug network interfaces
+      debug:
+        var: interface_check.stdout_lines
+
     - name: Update IP address and subnet mask
       ansible.builtin.shell: |
         netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
+      when: "Ethernet" in interface_check.stdout
       become: yes
 
     - name: Update Hostname
@@ -86,9 +76,8 @@
       become: yes
 
     - name: Reboot VM to apply changes
-      ansible.builtin.shell: shutdown -r -t 0
-      async: 1
-      poll: 0
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
 
     - name: Wait for VM to become reachable after reboot
       ansible.builtin.wait_for:
