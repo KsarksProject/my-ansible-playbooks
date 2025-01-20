@@ -2,7 +2,7 @@
 - name: Create VM from Proxmox Template (T-WIN-2022)
   hosts: localhost
   vars:
-    ansible_python_interpreter: /opt/venv/bin/python
+    ansible_python_interpreter: /usr/bin/python3  # Обновите путь к интерпретатору Python
   tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
@@ -59,13 +59,13 @@
   hosts: "{{ new_IP }}"
   vars:
     ansible_connection: ssh
-    ansible_user: Administrator
+    ansible_user: "Администратор"
     ansible_password: "{{ win_password }}"
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   tasks:
     - name: Update IP address and subnet mask
       ansible.builtin.shell: |
-        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.255.0 192.168.1.1
+        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
       become: yes
 
     - name: Update Hostname
