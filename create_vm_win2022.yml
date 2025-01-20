@@ -1,6 +1,6 @@
 ---
 - name: Create VM from Proxmox Template (T-WIN-2022)
-  hosts: 172.28.0.251
+  hosts: localhost
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
@@ -22,10 +22,14 @@
     - name: Install requests module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install requests
+      args:
+        creates: /opt/venv/bin/requests
 
     - name: Install proxmoxer module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
+      args:
+        creates: /opt/venv/bin/proxmoxer
 
     - name: Clone Proxmox template (T-WIN-2022)
       community.general.proxmox_kvm:
@@ -49,19 +53,20 @@
     - name: Wait for VM to become reachable via SSH
       ansible.builtin.wait_for:
         host: "{{ new_IP }}"
-        port: 22
+        port: 22  # Default SSH port
         timeout: 300
 
 - name: Configure VM (T-WIN-2022)
   hosts: "{{ new_IP }}"
   vars:
     ansible_connection: ssh
+    ansible_user: "{{ win_user }}"
+    ansible_password: "{{ win_password }}"
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   tasks:
     - name: Update IP address and subnet mask
-      ansible.windows.win_shell:
-        cmd: |
-          New-NetIPAddress -InterfaceAlias "Ethernet" `
-                           -IPAddress "{{ new_IP }}" `
+      ansible.builtin.shell: |
+        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
       become: yes
 
     - name: Update Hostname
@@ -75,5 +80,5 @@
     - name: Wait for VM to become reachable after reboot
       ansible.builtin.wait_for:
         host: "{{ new_IP }}"
-        port: 22
+        port: 22  # Default SSH port
         timeout: 300
