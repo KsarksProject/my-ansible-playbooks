@@ -2,7 +2,7 @@
 - name: Create VM from Proxmox Template (T-WIN-2022)
   hosts: 172.28.0.251
   vars:
-    ansible_python_interpreter: /opt/venv/bin/python
+    ansible_python_interpreter: "{{ ansible_playbook_python | default('/opt/venv/bin/python') }}"
   tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
@@ -18,6 +18,12 @@
         cmd: python3 -m venv /opt/venv
       args:
         creates: /opt/venv
+      register: venv_creation
+
+    - name: Fail if virtual environment creation failed
+      ansible.builtin.fail:
+        msg: "Failed to create virtual environment at /opt/venv."
+      when: venv_creation.rc is not defined or venv_creation.rc != 0
 
     - name: Install requests module in virtual environment
       ansible.builtin.command:
@@ -26,6 +32,8 @@
     - name: Install proxmoxer module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
+      args:
+        creates: /opt/venv/lib/python3.11/site-packages/proxmoxer
 
     - name: Clone Proxmox template (T-WIN-2022)
       community.general.proxmox_kvm:
@@ -39,7 +47,6 @@
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
         state: started
-        timeout: 30
       register: cloned_vm
 
     - name: Debug cloned VM information
