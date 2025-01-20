@@ -39,6 +39,7 @@
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
         state: started
+        timeout: 30
       register: cloned_vm
 
     - name: Debug cloned VM information
