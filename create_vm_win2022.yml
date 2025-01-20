@@ -38,24 +38,34 @@
         full: false
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-#        timeout: 360
-        start: true
+        state: present
       register: cloned_vm
 
-    - name: Add new VM to inventory
-      add_host:
-        name: "{{ new_IP }}"
-        groups: Windows_servers
+    - name: Start cloned VM
+      community.general.proxmox_kvm:
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        validate_certs: false
+        vmid: "{{ cloned_vm.newid }}"
+        state: started
 
     - name: Wait for VM to boot
       ansible.builtin.pause:
-        seconds: 60
+        seconds: 120
 
-#    - name: Wait for VM to become reachable via SSH
-#      ansible.builtin.wait_for:
-#        host: "{{ new_IP }}"
-#        port: 22  # Default SSH port
-#        timeout: 300
+    - name: Get new VM IP address
+      community.general.proxmox_kvm:
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        validate_certs: false
+        vmid: "{{ cloned_vm.newid }}"
+      register: vm_info
+
+    - name: Set VM IP address
+      set_fact:
+        new_IP: "{{ vm_info.networks[0].ip }}"
 
 - name: Configure VM (T-WIN-2022)
   hosts: "{{ new_IP }}"
@@ -71,9 +81,18 @@
       become: yes
 
     - name: Update Hostname
-      ansible.windows.win_hostname:
-        name: "{{ hostname }}"
+      ansible.builtin.shell: |
+        netdom renamecomputer %COMPUTERNAME% /NewName:{{ hostname }} /Force
+      become: yes
 
     - name: Reboot VM to apply changes
-      ansible.windows.win_reboot:
-        reboot_timeout: 10
+      ansible.builtin.shell: shutdown -r -t 0
+      async: 1
+      poll: 0
+
+    - name: Wait for VM to become reachable after reboot
+      ansible.builtin.wait_for:
+        host: "{{ new_IP }}"
+        port: 22
+        delay: 30
+        timeout: 300
