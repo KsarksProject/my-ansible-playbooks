@@ -35,11 +35,28 @@
         api_host: 172.28.0.251
         api_port: 8006
         validate_certs: false
-        full: false
+        full: true
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-        state: started
+        state: present
       register: cloned_vm
+
+    - name: Set cloud-init configuration
+      community.general.proxmox_kvm:
+        api_host: 172.28.0.251
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        validate_certs: false
+        node: pve-in
+        vmid: "{{ cloned_vm.id }}"
+        cicustom:
+          user: "local:snippets/user-data.yaml"
+          meta: "local:snippets/meta-data.yaml"
+        ipconfig0: "ip={{ new_IP }},gw=172.28.0.1"
+        onboot: 1
+        memory: 2048
+        cores: 2
+        state: started
 
     - name: Debug cloned VM information
       debug:
