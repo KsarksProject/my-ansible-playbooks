@@ -1,4 +1,2 @@
----
-collections:
-  - name: Project
-    version:
+- src: geerlingguy.apache
+- src: geerlingguy.mysql

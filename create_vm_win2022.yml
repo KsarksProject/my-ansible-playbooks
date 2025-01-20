@@ -59,7 +59,7 @@
   hosts: "{{ new_IP }}"
   vars:
     ansible_connection: ssh
-    ansible_user: "Администратор"
+    ansible_user: Administrator
     ansible_password: "{{ win_password }}"
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   tasks:
