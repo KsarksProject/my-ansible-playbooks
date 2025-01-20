@@ -61,7 +61,7 @@
   tasks:
     - name: Update IP address and subnet mask
       ansible.builtin.shell: |
-        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.255.0 192.168.1.1
+        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
       become: yes
 
     - name: Update Hostname
