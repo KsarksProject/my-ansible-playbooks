@@ -1,0 +1,8 @@
+---
+- name: Install or Update DL
+  hosts: "{{ hostname }}"
+  roles:
+    - role: component_role
+      vars:
+        component_name: "DirectumRX"
+        component_archive_path_linux: "{{ role_path }}/../../../../{{ component_name }}.tar.gz"
