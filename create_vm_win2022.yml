@@ -1,17 +1,18 @@
 ---
 - name: Create VM from Proxmox Template (T-WIN-2022)
   hosts: localhost
+  become: yes  # Использование sudo
   vars:
-    ansible_python_interpreter: /usr/bin/python3  # Обновите путь к интерпретатору Python
+    ansible_python_interpreter: /usr/bin/python3  # Указание пути к интерпретатору Python
   tasks:
     - name: Install necessary packages via apt
       ansible.builtin.apt:
+        update_cache: yes
         name:
           - python3-pip
           - python3-setuptools
           - python3-venv
         state: present
-      become: yes
 
     - name: Create virtual environment
       ansible.builtin.command:
@@ -65,7 +66,7 @@
   tasks:
     - name: Update IP address and subnet mask
       ansible.builtin.shell: |
-        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
+        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.255.0 192.168.1.1
       become: yes
 
     - name: Update Hostname
