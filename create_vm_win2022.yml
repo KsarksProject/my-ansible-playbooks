@@ -39,7 +39,13 @@
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
 #        timeout: 360
-        startup: yes
+        start: true
+      register: cloned_vm
+
+    - name: Add new VM to inventory
+      add_host:
+        name: "{{ new_IP }}"
+        groups: Windows_servers
 
     - name: Wait for VM to boot
       ansible.builtin.pause:
@@ -70,10 +76,4 @@
 
     - name: Reboot VM to apply changes
       ansible.windows.win_reboot:
-        reboot_timeout: 300
-
-    - name: Wait for VM to become reachable after reboot
-      ansible.builtin.wait_for:
-        host: "{{ new_IP }}"
-        port: 22  # Default SSH port
-        timeout: 300
+        reboot_timeout: 10
