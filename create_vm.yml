@@ -17,9 +17,8 @@
 
   tasks:
     - name: Install required Python libraries
-      pip:
-        name:
-          - proxmoxer
+      ansible.builtin.pip:
+        name: proxmoxer
         executable: "{{ ansible_python_interpreter }}"
 
     - name: Get existing VM IDs
