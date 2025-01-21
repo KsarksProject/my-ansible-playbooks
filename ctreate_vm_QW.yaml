@@ -1,0 +1,46 @@
+---
+- name: Create VM from QCOW2
+  hosts: localhost
+  connection: local
+  vars:
+    proxmox_host: "172.28.0.251"
+    proxmox_user: "root@pam"
+    proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}" # Храните пароль через Ansible Vault
+    proxmox_node: "pve-in"
+    vm_name: "new-vm"
+    vm_id: "8000"  # Уникальный ID для новой VM
+    storage: "local-lvm"
+    qcow2_path: "/var/lib/vz/images/105/my-template.qcow2"  # Путь к вашему QCOW2-файлу
+
+  tasks:
+    - name: Create a new VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        name: "{{ vm_name }}"
+        cores: 4
+        memory: 8192
+        net0: "virtio,bridge=vmbr0"
+        scsihw: "virtio-scsi-pci"
+        ide2: "cloudinit"
+        boot: "scsi0"
+        bootdisk: "scsi0"
+        onboot: true
+        state: present
+
+    - name: Attach QCOW2 disk
+      command: >
+        qm set {{ vm_id }}
+        --scsi0 {{ storage }}:0,import-from={{ qcow2_path }}
+
+    - name: Start VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        state: started
