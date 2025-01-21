@@ -1,37 +1,75 @@
----
-- name: Create VM from Vcenter Template
+- name: Create Virtual Machine on Proxmox with free vm_id
   hosts: localhost
   connection: local
-  gather_facts: false
+  vars:
+    proxmox_host: "172.28.0.251"
+    proxmox_user: "root@pam"
+    proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}"
+    proxmox_node: "pve-in"
+    cores: 2
+    memory: 2048  # Размер оперативной памяти в МБ
+    disk_size: "20G"  # Размер диска
+    storage: "srv-bs2"  # Хранилище для диска и ISO
+    iso_path: "srv-bs2:iso/ubuntu-22.04.4-live-server-amd64.iso"  # Путь к ISO-образу в хранилище
+    bridge: "vmbr1"  # Сетевой мост
+    ansible_python_interpreter: /usr/bin/python3.11
+    vm_id_range: "{{ range(8000, 9000) }}"  # Диапазон для vm_id
+
   tasks:
-    - name: Clone Template to New Virtual Machine
-      community.vmware.vmware_guest:
-        validate_certs: false
+    - name: Install required Python libraries
+      pip:
+        name:
+          - proxmoxer
+        executable: "{{ ansible_python_interpreter }}"
+
+    - name: Get existing VM IDs
+      shell: >
+        pvesh get /cluster/resources --type vm | jq -r '.[].vmid'
+      register: existing_vms
+      changed_when: false
+
+    - name: Find free vm_id in range
+      set_fact:
+        vm_id: "{{ vm_id_range | difference(existing_vms.stdout_lines | map('int')) | first }}"
+      when: existing_vms.stdout_lines is defined
+
+    - name: Fail if no free vm_id found
+      fail:
+        msg: "No free vm_id available in the range 8000-9000."
+      when: vm_id is not defined
+
+    - name: Create a new virtual machine
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
         name: "{{ vm_name }}"
-        template: # Input vCenter Template
-        datacenter: # Input vCenter Datacenter
-        resource_pool: # Input Resource Pool
-        folder: "/"
-        state: poweredon
-        wait_for_ip_address: true
+        cores: "{{ cores }}"
+        memory: "{{ memory }}"
+        net: "model=virtio,bridge={{ bridge }}"
+        scsihw: "virtio-scsi-pci"
+        boot: "order=scsi0;ide2;net0"
+        ide2: "{{ iso_path }},media=cdrom"
+        onboot: true
+        state: present
 
-- name: Set VM IP and Hostname
-  hosts: 172.16.1.200 # This is the IP that is set for the template, if you use a different IP update here.
-  tasks:
-    - name: Update IP
-      ansible.builtin.lineinfile:
-        path: /etc/sysconfig/network-scripts/ifcfg-ens192
-        regex: "IPADDR=172.16.1.200" # Set to same IP as line 19
-        line: "IPADDR={{ new_IP }}"
+    - name: Add a virtual disk
+      shell: >
+        qm set {{ vm_id }} --scsi0 {{ storage }}:{{ disk_size }}
+      args:
+        warn: false
 
-    - name: Update Hostname
-      ansible.builtin.hostname:
-        name: "{{ hostname }}.domain.local" # Update domain
+    - name: Start the virtual machine
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        state: started
 
-    - name: Reboot
-      ansible.builtin.command: "init 6"
-      ignore_errors: true
-
-    - name: Pause for 30 seconds to wait for reboot
-      ansible.builtin.pause:
-        seconds: "10"
+    - name: Output created VM details
+      debug:
+        msg: "VM {{ vm_name }} with ID {{ vm_id }} created and started successfully."
