@@ -8,7 +8,7 @@
     proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}" # Храните пароль через Ansible Vault
     proxmox_node: "pve-in"
     vm_name: "new-vm"
-    vm_id: "105"  # Уникальный ID для новой VM
+    vm_id: "105"
     storage: "srv-bs2"
     qcow2_path: "/mnt/pve/srv-bs2/qcow2/2022.qcow2"  # Путь к вашему QCOW2-файлу
 
