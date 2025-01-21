@@ -11,8 +11,14 @@
     vm_id: "105"  # Уникальный ID для новой VM
     storage: "srv-bs2"
     qcow2_path: "/mnt/pve/srv-bs2/qcow2/2022.qcow2"  # Путь к вашему QCOW2-файлу
+    ansible_python_interpreter: /usr/bin/python3.11
 
   tasks:
+    - name: Install Proxmoxer library
+      pip:
+        name: proxmoxer
+        executable: /usr/bin/python3.11
+
     - name: Create a new VM
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
