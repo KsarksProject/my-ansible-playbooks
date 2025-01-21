@@ -1,51 +1,69 @@
----
-- name: Create VM from QCOW2
+- name: Deploy VM from QCOW2 template
   hosts: localhost
   connection: local
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
-    proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}" # Храните пароль через Ansible Vault
+    proxmox_password: "{{ proxmox_pass }}"
     proxmox_node: "pve-in"
-    vm_name: "new-vm"
-    vm_id: "105"  # Уникальный ID для новой VM
-    storage: "srv-bs2"
-    qcow2_path: "/mnt/pve/srv-bs2/qcow2/2022.qcow2"  # Путь к вашему QCOW2-файлу
+    storage: "local-lvm"
+    qcow2_path: "/var/lib/vz/images/base-102-compressed.qcow2"
     ansible_python_interpreter: /usr/bin/python3.11
+  # Survey переменные
+    vm_name: "{{ vm_name }}"
+    new_IP: "{{ new_IP }}"
+    hostname: "{{ hostname }}"
 
   tasks:
     - name: Install Proxmoxer library
       pip:
         name: proxmoxer
-        executable: /usr/bin/python3.11
+        executable: "{{ ansible_python_interpreter }}"
 
-    - name: Create a new VM
+    - name: Ensure VM is created
       community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_password: "{{ proxmox_password }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ vm_id }}"
+        api_host: 172.28.0.251
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
         name: "{{ vm_name }}"
         cores: 4
         memory: 8192
-        net: "model=virtio,bridge=vmbr0"
+        net: "model=virtio,bridge=vmbr1"
         scsihw: "virtio-scsi-pci"
         boot: "scsi0"
         bootdisk: "scsi0"
         onboot: true
         state: present
 
-    - name: Attach QCOW2 disk
-      command: >
-        qm set {{ vm_id }}
-        --scsi0 {{ storage }}:0,import-from={{ qcow2_path }}
+    - name: Import QCOW2 disk
+      shell: >
+        qm importdisk {{ vm_id }} {{ qcow2_path }} {{ storage }}
+      args:
+        warn: false
+
+    - name: Attach imported disk to VM
+      shell: >
+        qm set {{ vm_id }} --scsi0 {{ storage }}:vm-{{ vm_id }}-disk-0
+      args:
+        warn: false
 
     - name: Start VM
       community.general.proxmox_kvm:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ proxmox_user }}"
-        api_password: "{{ proxmox_password }}"
-        node: "{{ proxmox_node }}"
-        vmid: "{{ vm_id }}"
+        proxmox_host: "172.28.0.251"
+        proxmox_user: "root@pam"
+        proxmox_password: "{{ proxmox_pass }}"
+        proxmox_node: "pve-in"
+        name: "{{ vm_name }}"
         state: started
+
+    - name: Configure network settings
+      shell: >
+        qm set {{ vm_id }} --ipconfig0 ip={{ new_IP }}/24,gw=192.168.1.1
+      args:
+        warn: false
+
+    - name: Set hostname
+      shell: >
+        qm set {{ vm_id }} --name {{ hostname }}
+      args:
+        warn: false
