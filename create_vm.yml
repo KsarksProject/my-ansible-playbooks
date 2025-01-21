@@ -36,7 +36,7 @@
       args:
         creates: /opt/venv/bin/proxmoxer
 
-    - name: Create a new virtual machine with auto-assigned VMID
+    - name: Create a new virtual machine
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -47,10 +47,15 @@
         memory: "{{ memory }}"
         net: "model=virtio,bridge={{ bridge }}"
         scsihw: "virtio-scsi-pci"
-        boot: "order=scsi0;ide2;net0"
-        ide2: "{{ iso_path }},media=cdrom"
+        boot: "order=scsi0;net0"
         onboot: true
         state: present
+
+    - name: Attach ISO image to the VM
+      shell: >
+        qm set $(pvesh get /cluster/nextid) --ide2 {{ iso_path }},media=cdrom
+      args:
+        warn: false
 
     - name: Add a virtual disk
       shell: >
