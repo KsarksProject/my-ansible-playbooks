@@ -1,10 +1,11 @@
-- name: Create Virtual Machine on Proxmox with free vm_id
+- name: Create Virtual Machine on Proxmox
   hosts: 172.28.0.251
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
     proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}"
     proxmox_node: "pve-in"
+    vm_name: "new-vm"  # Имя виртуальной машины
     cores: 2
     memory: 2048  # Размер оперативной памяти в МБ
     disk_size: "20G"  # Размер диска
@@ -12,7 +13,6 @@
     iso_path: "srv-bs2:iso/ubuntu-22.04.4-live-server-amd64.iso"  # Путь к ISO-образу в хранилище
     bridge: "vmbr1"  # Сетевой мост
     ansible_python_interpreter: /usr/bin/python3.11
-    vm_id_range: "{{ range(8000, 9000) }}"  # Диапазон для vm_id
 
   tasks:
     - name: Install necessary packages via apt
@@ -21,7 +21,6 @@
           - python3-pip
           - python3-setuptools
           - python3-venv
-          - jq
         state: present
       become: yes
 
@@ -37,29 +36,12 @@
       args:
         creates: /opt/venv/bin/proxmoxer
 
-    - name: Get existing VM IDs
-      shell: >
-        pvesh get /cluster/resources --type vm | jq -r '.[].vmid'
-      register: existing_vms
-      changed_when: false
-
-    - name: Find free vm_id in range
-      set_fact:
-        vm_id: "{{ vm_id_range | difference(existing_vms.stdout_lines | map('int')) | first }}"
-      when: existing_vms.stdout_lines is defined
-
-    - name: Fail if no free vm_id found
-      fail:
-        msg: "No free vm_id available in the range 8000-9000."
-      when: vm_id is not defined
-
-    - name: Create a new virtual machine
+    - name: Create a new virtual machine with auto-assigned VMID
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ vm_id }}"
         name: "{{ vm_name }}"
         cores: "{{ cores }}"
         memory: "{{ memory }}"
@@ -72,7 +54,7 @@
 
     - name: Add a virtual disk
       shell: >
-        qm set {{ vm_id }} --scsi0 {{ storage }}:{{ disk_size }}
+        qm set $(pvesh get /cluster/nextid) --scsi0 {{ storage }}:{{ disk_size }}
       args:
         warn: false
 
@@ -82,9 +64,9 @@
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ vm_id }}"
+        vmid: "$(pvesh get /cluster/nextid)"
         state: started
 
     - name: Output created VM details
       debug:
-        msg: "VM {{ vm_name }} with ID {{ vm_id }} created and started successfully."
+        msg: "VM {{ vm_name }} created and started successfully."
