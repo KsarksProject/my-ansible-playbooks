@@ -1,6 +1,5 @@
 - name: Create Virtual Machine on Proxmox with free vm_id
-  hosts: localhost
-  connection: local
+  hosts: 172.28.0.251
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
@@ -16,10 +15,26 @@
     vm_id_range: "{{ range(8000, 9000) }}"  # Диапазон для vm_id
 
   tasks:
-    - name: Install required Python libraries
-      ansible.builtin.pip:
-        name: proxmoxer
-        executable: "{{ ansible_python_interpreter }}"
+    - name: Install necessary packages via apt
+      ansible.builtin.apt:
+        name:
+          - python3-pip
+          - python3-setuptools
+          - python3-venv
+        state: present
+      become: yes
+
+    - name: Create virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/venv
+      args:
+        creates: /opt/venv
+
+    - name: Install necessary Python modules
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install requests proxmoxer
+      args:
+        creates: /opt/venv/bin/proxmoxer
 
     - name: Get existing VM IDs
       shell: >
