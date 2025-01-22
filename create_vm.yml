@@ -24,20 +24,12 @@
           - jq
         state: present
       become: yes
+      when: ansible_connection != 'local'
 
-    - name: Create virtual environment
-      ansible.builtin.command:
-        cmd: python3 -m venv /opt/venv
-      args:
-        creates: /opt/venv
-
-    - name: Install requests module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install requests
-
-    - name: Install proxmoxer module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install proxmoxer
+    - name: Get the next available VMID
+      command: pvesh get /cluster/nextid
+      register: next_vmid
+      changed_when: false
 
     - name: Create a new virtual machine
       community.general.proxmox_kvm:
@@ -45,26 +37,27 @@
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ lookup('pipe', 'pvesh get /cluster/nextid') }}"
+        vmid: "{{ next_vmid.stdout }}"
         name: "{{ vm_name }}"
         cores: "{{ cores }}"
         memory: "{{ memory }}"
         net: "model=virtio,bridge={{ bridge }}"
         scsihw: "virtio-scsi-pci"
         boot: "order=scsi0;net0"
-        sata: "0,media=cdrom,storage={{ iso_path }}"
         onboot: true
         state: present
 
     - name: Attach ISO to the VM
-      shell: >
-        qm set {{ lookup('pipe', 'pvesh get /cluster/nextid') }} --ide2 {{ iso_path }},media=cdrom
+      command: >
+        qm set {{ next_vmid.stdout }}
+        --ide2 {{ iso_path }},media=cdrom
       args:
         warn: false
 
     - name: Add a virtual disk
-      shell: >
-        qm set {{ lookup('pipe', 'pvesh get /cluster/nextid') }} --scsi0 {{ storage }}:{{ disk_size }}
+      command: >
+        qm set {{ next_vmid.stdout }}
+        --scsi0 {{ storage }}:{{ disk_size }}
       args:
         warn: false
 
@@ -74,9 +67,9 @@
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
-        vmid: "{{ lookup('pipe', 'pvesh get /cluster/nextid') }}"
+        vmid: "{{ next_vmid.stdout }}"
         state: started
 
     - name: Output VM details
       debug:
-        msg: "VM '{{ vm_name }}' created and started successfully on Proxmox node '{{ proxmox_node }}'."
+        msg: "VM '{{ vm_name }}' with VMID '{{ next_vmid.stdout }}' created and started successfully on Proxmox node '{{ proxmox_node }}'."
