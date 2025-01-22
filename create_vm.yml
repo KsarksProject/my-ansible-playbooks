@@ -1,40 +1,34 @@
-- name: Create Virtual Machine on Proxmox
-  hosts: 172.28.0.251
+- name: Manage Virtual Machines in Proxmox
+  hosts: localhost
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
     proxmox_password: "{{ lookup('env', 'PROXMOX_PASSWORD') }}"
     proxmox_node: "pve-in"
-    vm_name: "new-vm"  # Имя виртуальной машины
-    cores: 2
-    memory: 2048  # Размер оперативной памяти в МБ
-    disk_size: "20G"  # Размер диска
-    storage: "srv-bs2"  # Хранилище для диска и ISO
-    iso_path: "srv-bs2:iso/ubuntu-22.04.4-live-server-amd64.iso"  # Путь к ISO-образу в хранилище
-    bridge: "vmbr1"  # Сетевой мост
+    vm_name: "new-vm"  # Имя новой виртуальной машины
+    cores: 2           # Количество процессоров
+    memory: 2048       # Размер памяти в МБ
+    disk_size: "20G"   # Размер виртуального диска
+    storage: "local-lvm"  # Хранилище, где будет размещён диск
+    iso_path: "local:iso/ubuntu-22.04.4-live-server-amd64.iso"  # Путь к ISO-образу
+    bridge: "vmbr1"    # Сетевой мост для VM
     ansible_python_interpreter: /usr/bin/python3.11
 
   tasks:
-    - name: Install necessary packages via apt
+    - name: Install required Ansible collections and dependencies
       ansible.builtin.apt:
         name:
           - python3-pip
           - python3-setuptools
           - python3-venv
+          - jq
         state: present
       become: yes
 
-    - name: Create virtual environment
-      ansible.builtin.command:
-        cmd: python3 -m venv /opt/venv
-      args:
-        creates: /opt/venv
-
-    - name: Install necessary Python modules
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install requests proxmoxer
-      args:
-        creates: /opt/venv/bin/proxmoxer
+    - name: Install Proxmoxer Python library
+      ansible.builtin.pip:
+        name: proxmoxer
+        executable: /usr/bin/python3.11
 
     - name: Create a new virtual machine
       community.general.proxmox_kvm:
@@ -42,24 +36,26 @@
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
+        vmid: "{{ lookup('pipe', 'pvesh get /cluster/nextid') }}"
         name: "{{ vm_name }}"
         cores: "{{ cores }}"
         memory: "{{ memory }}"
         net: "model=virtio,bridge={{ bridge }}"
         scsihw: "virtio-scsi-pci"
         boot: "order=scsi0;net0"
+        sata: "0,media=cdrom,storage={{ iso_path }}"
         onboot: true
         state: present
 
-    - name: Attach ISO image to the VM
+    - name: Attach ISO to the VM
       shell: >
-        qm set $(pvesh get /cluster/nextid) --ide2 {{ iso_path }},media=cdrom
+        qm set {{ lookup('pipe', 'pvesh get /cluster/nextid') }} --ide2 {{ iso_path }},media=cdrom
       args:
         warn: false
 
     - name: Add a virtual disk
       shell: >
-        qm set $(pvesh get /cluster/nextid) --scsi0 {{ storage }}:{{ disk_size }}
+        qm set {{ lookup('pipe', 'pvesh get /cluster/nextid') }} --scsi0 {{ storage }}:{{ disk_size }}
       args:
         warn: false
 
@@ -69,9 +65,9 @@
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
         node: "{{ proxmox_node }}"
-        vmid: "$(pvesh get /cluster/nextid)"
+        vmid: "{{ lookup('pipe', 'pvesh get /cluster/nextid') }}"
         state: started
 
-    - name: Output created VM details
+    - name: Output VM details
       debug:
-        msg: "VM {{ vm_name }} created and started successfully."
+        msg: "VM '{{ vm_name }}' created and started successfully on Proxmox node '{{ proxmox_node }}'."
