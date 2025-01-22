@@ -41,23 +41,34 @@
         name: "{{ vm_name }}"
         timeout: 300
         startup: yes
-#      register: clone_result
-#      async: 300
-#      poll: 10
-#
-#    - name: Ensure cloning is completed
-#      async_status:
-#        jid: "{{ clone_result.ansible_job_id }}"
-#      register: clone_status
-#      until: clone_status.finished
-#      retries: 60
-#      delay: 10
+      register: clone_result
 
-    - name: Wait for 30 seconds
-      ansible.builtin.pause:
-        seconds: 30
+    - name: Wait for VM to appear in Proxmox
+      retries: 10
+      delay: 15
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
+      register: vm_ready
+      until: vm_ready is not failed
 
-    - name: Start VM
+    - name: Check VM state
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
+      register: vm_status
+
+    - name: Start VM if not running
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -67,29 +78,4 @@
         validate_certs: false
         name: "{{ vm_name }}"
         state: started
-
-#    - name: Wait for VM to be reachable
-#      wait_for:
-#        host: 172.28.1.200
-#        port: 22
-#        timeout: 40
-#
-#- name: Set VM Hostname and IP
-#  hosts: 172.28.1.200
-#  tasks:
-#    - name: Update IP
-#      ansible.builtin.lineinfile:
-#        path: /etc/sysconfig/network-scripts/ifcfg-eth0
-#        regex: "^IPADDR="
-#        line: "IPADDR={{ new_IP }}"
-#        backup: yes
-#
-#    - name: Update Hostname
-#      ansible.builtin.hostname:
-#        name: "{{ hostname }}.cvd.local"
-#
-#    - name: Reboot
-#      ansible.builtin.command: "init 6"
-#      ignore_errors: true
-
-
+      when: vm_status.instance[0].status != "running"
