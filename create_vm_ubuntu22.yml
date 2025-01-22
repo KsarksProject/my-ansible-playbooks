@@ -56,26 +56,3 @@
         name: "{{ vm_name }}"
       register: vm_ready
       until: vm_ready is not failed
-
-    - name: Check VM state
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-      register: vm_status
-
-    - name: Start VM if not running
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-        state: started
-      when: vm_status.instance[0].status != "running"
