@@ -15,7 +15,7 @@
     ansible_python_interpreter: /usr/bin/python3.11
 
   tasks:
-    - name: Install required Ansible collections and dependencies
+    - name: Install necessary packages via apt
       ansible.builtin.apt:
         name:
           - python3-pip
@@ -25,10 +25,19 @@
         state: present
       become: yes
 
-    - name: Install Proxmoxer Python library
-      ansible.builtin.pip:
-        name: proxmoxer
-        executable: /usr/bin/python3.11
+    - name: Create virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/venv
+      args:
+        creates: /opt/venv
+
+    - name: Install requests module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install requests
+
+    - name: Install proxmoxer module in virtual environment
+      ansible.builtin.command:
+        cmd: /opt/venv/bin/pip install proxmoxer
 
     - name: Create a new virtual machine
       community.general.proxmox_kvm:
