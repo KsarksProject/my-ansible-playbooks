@@ -1,5 +1,5 @@
 - name: Manage Virtual Machines in Proxmox
-  hosts: localhost
+  hosts: 172.28.0.251
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
@@ -15,20 +15,10 @@
     ansible_python_interpreter: /usr/bin/python3.11
 
   tasks:
-    - name: Install necessary packages via apt
-      ansible.builtin.apt:
-        name:
-          - python3-pip
-          - python3-setuptools
-          - python3-venv
-          - jq
-        state: present
-      become: yes
-      when: ansible_connection != 'local'
-
     - name: Get the next available VMID
       command: pvesh get /cluster/nextid
       register: next_vmid
+      become: true
       changed_when: false
 
     - name: Create a new virtual machine
@@ -51,15 +41,13 @@
       command: >
         qm set {{ next_vmid.stdout }}
         --ide2 {{ iso_path }},media=cdrom
-      args:
-        warn: false
+      become: true
 
     - name: Add a virtual disk
       command: >
         qm set {{ next_vmid.stdout }}
         --scsi0 {{ storage }}:{{ disk_size }}
-      args:
-        warn: false
+      become: true
 
     - name: Start the virtual machine
       community.general.proxmox_kvm:
