@@ -1,5 +1,5 @@
 - name: Manage Virtual Machines in Proxmox
-  hosts: 172.28.0.251
+  hosts: proxmox
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
