@@ -40,6 +40,7 @@
         clone: "SRVCVDUBUNTU"
         name: "{{ vm_name }}"
         timeout: 300
+        state: present
         startup: yes
       register: clone_result
 
