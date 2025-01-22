@@ -39,9 +39,10 @@
         full: true
         clone: "UbuntuTemplate"
         name: "{{ vm_name }}"
+        timeout: 300
         startup: yes
       register: clone_result
-      async: 600
+      async: 300
       poll: 10
 
     - name: Ensure cloning is completed
