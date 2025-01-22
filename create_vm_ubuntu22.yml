@@ -40,6 +40,17 @@
         clone: "UbuntuTemplate"
         name: "{{ vm_name }}"
         startup: yes
+      register: clone_result
+      async: 600
+      poll: 10
+
+    - name: Ensure cloning is completed
+      async_status:
+        jid: "{{ clone_result.ansible_job_id }}"
+      register: clone_status
+      until: clone_status.finished
+      retries: 60
+      delay: 10
 
     - name: Wait for 30 seconds
       ansible.builtin.pause:
