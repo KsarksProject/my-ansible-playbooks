@@ -27,19 +27,7 @@
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
 
-    - name: Check if VM already exists
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-      register: vm_exists
-      failed_when: false
-
-    - name: Clone Proxmox template if VM does not exist
+    - name: Clone Proxmox template
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -53,7 +41,6 @@
         name: "{{ vm_name }}"
         timeout: 300
         startup: yes
-      when: vm_exists is failed
       register: clone_result
 
     - name: Wait for VM to appear in Proxmox
@@ -70,20 +57,11 @@
       register: vm_ready
       until: vm_ready is not failed
 
-    - name: Gather VM facts using Proxmox info
-      community.general.proxmox_kvm_info:
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-      register: vms_info
+    - name: Gather facts about VM
+      ansible.builtin.setup:
+        gather_subset:
+          - network
 
-    - name: Find IP address of the created VM
+    - name: Debug IPv4 addresses
       debug:
-        msg: >
-          {{
-            (vms_info.instances | selectattr('name', 'equalto', vm_name) | list | first).guest_agent['ip-addresses']
-            | selectattr('ip-address-type', 'equalto', 'ipv4') | map(attribute='ip-address') | join(', ')
-          }}
-
+        msg: "VM IPv4 Addresses: {{ ansible_all_ipv4_addresses }}"
