@@ -20,15 +20,16 @@
         startup: yes
       register: clone_result
 
-#    - name: Start VMs
-#      proxmox_kvm:
-#        api_host: 172.28.0.251
-#        api_password: "{{ proxmox_pass }}"
-#        api_user: "root@pam"
-#        vmid: "{{ item.value.vmid }}"
-#        node: pve-in
-#        state: started
-#      loop: "{{ lookup('dict', vms) }}"
+    - name: Start VM
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
+        state: started
 
 #    - name: Wait for VM to be ready
 #      retries: 10
