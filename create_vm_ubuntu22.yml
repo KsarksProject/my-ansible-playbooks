@@ -1,60 +1,54 @@
+---
 - name: Create VM from Proxmox Template
   hosts: proxmox
   vars:
-    vm_name: "SRVCVDUBUNTU"  # Имя создаваемой виртуальной машины
-    template_name: "UbuntuTemplate"  # Шаблон для клонирования
-    proxmox_api_host: "172.28.0.251"  # Хост Proxmox
-    proxmox_api_user: "root@pam"  # Пользователь для доступа к API
-    proxmox_api_password: "{{ proxmox_pass }}"  # Пароль для API
-
+    ansible_python_interpreter: /opt/venv/bin/python
   tasks:
-    # Клонирование шаблона виртуальной машины
     - name: Clone Proxmox template
       community.general.proxmox_kvm:
         node: pve-in
-        api_user: "{{ proxmox_api_user }}"
-        api_password: "{{ proxmox_api_password }}"
-        api_host: "{{ proxmox_api_host }}"
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
         api_port: 8006
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "{{ template_name }}"
+        clone: "SRVCVDUBUNTU"
         name: "{{ vm_name }}"
         timeout: 300
+#        startup: yes
       register: clone_result
 
-    # Ожидание, пока VM станет готовой
+    - name: Start VMs
+      proxmox_kvm:
+        api_host: 172.28.0.251
+        api_password: "{{ proxmox_pass }}"
+        api_user: "root@pam"
+        vmid: "{{ item.value.vmid }}"
+        node: pve-in
+        state: started
+      loop: "{{ lookup('dict', vms) }}"
+
     - name: Wait for VM to be ready
       retries: 10
       delay: 15
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "{{ proxmox_api_user }}"
-        api_password: "{{ proxmox_api_password }}"
-        api_host: "{{ proxmox_api_host }}"
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
       until: clone_result is not failed
 
-    # Получение информации о виртуальной машине с помощью API
-    - name: Get VM details using Proxmox API
-      uri:
-        url: "https://{{ proxmox_api_host }}:8006/api2/json/nodes/pve-in/qemu"
-        method: GET
-        user: "{{ proxmox_api_user }}"
-        password: "{{ proxmox_api_password }}"
-        force_basic_auth: true
-        validate_certs: false
-      register: vm_info
-
-    # Извлечение IPv4-адресов
-    - name: Extract IPv4 addresses
-      debug:
-        msg: >
-          VM IPv4 Addresses: {%
-            for instance in vm_info.json.data
-            if instance['name'] == vm_name
-          %} {{ instance['net0']['ip'] | default('No IP Assigned') }}
-          {% endfor %}
+#    - name: Get VM details using Proxmox API
+#      community.general.proxmox_kvm_info:
+#        node: pve-in
+#        api_user: "root@pam"
+#        api_password: "{{ proxmox_pass }}"
+#        api_host: 172.28.0.251
+#        api_port: 8006
+#        validate_certs: false
+#      register: vm_info
+#
+#    - name: Extract IPv4 addresses
+#      debug:
+#        msg: >
+#          VM IPv4 Addresses: {{
+#            vm_info.instances | selectattr('name', 'equalto', vm_name) |
+#            map(attribute='network') | list
+#          }}
