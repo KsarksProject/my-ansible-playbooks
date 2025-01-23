@@ -38,14 +38,14 @@
         name: "{{ vm_name }}"
       until: clone_result is not failed
 
-    # Получение деталей виртуальной машины
+    # Получение информации о виртуальной машине с помощью API
     - name: Get VM details using Proxmox API
-      community.general.proxmox_kvm_info:
-        node: pve-in
-        api_user: "{{ proxmox_api_user }}"
-        api_password: "{{ proxmox_api_password }}"
-        api_host: "{{ proxmox_api_host }}"
-        api_port: 8006
+      uri:
+        url: "https://{{ proxmox_api_host }}:8006/api2/json/nodes/pve-in/qemu"
+        method: GET
+        user: "{{ proxmox_api_user }}"
+        password: "{{ proxmox_api_password }}"
+        force_basic_auth: true
         validate_certs: false
       register: vm_info
 
@@ -53,7 +53,8 @@
     - name: Extract IPv4 addresses
       debug:
         msg: >
-          VM IPv4 Addresses: {{
-            vm_info.instances | selectattr('name', 'equalto', vm_name) | 
-            map(attribute='network') | list
-          }}
+          VM IPv4 Addresses: {%
+            for instance in vm_info.json.data
+            if instance['name'] == vm_name
+          %} {{ instance['net0']['ip'] | default('No IP Assigned') }}
+          {% endfor %}
