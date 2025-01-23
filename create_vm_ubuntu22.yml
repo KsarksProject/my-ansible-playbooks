@@ -1,6 +1,7 @@
 ---
 - name: Create VM from Proxmox Template
   hosts: proxmox
+  become: yes
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
@@ -11,7 +12,6 @@
           - python3-setuptools
           - python3-venv
         state: present
-      become: yes
 
     - name: Create virtual environment
       ansible.builtin.command:
@@ -22,10 +22,16 @@
     - name: Install requests module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install requests
+      environment:
+        VIRTUAL_ENV: /opt/venv
+        PATH: /opt/venv/bin:{{ ansible_env.PATH }}
 
     - name: Install proxmoxer module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
+      environment:
+        VIRTUAL_ENV: /opt/venv
+        PATH: /opt/venv/bin:{{ ansible_env.PATH }}
 
     - name: Check if VM already exists
       community.general.proxmox_kvm:
@@ -54,22 +60,14 @@
         timeout: 300
         state: present
         startup: yes
-      when: vm_exists is failed
+      when: not vm_exists.success
       register: clone_result
 
     - name: Wait for VM to appear in Proxmox
-      retries: 10
-      delay: 15
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-      register: vm_ready
-      until: vm_ready is not failed
+      ansible.builtin.wait_for:
+        path: "/var/lib/vz/images/{{ clone_result.id }}/vm-{{ clone_result.id }}.conf"
+        delay: 15
+        retries: 10
 
     - name: Gather facts about VM
       ansible.builtin.setup:
@@ -77,5 +75,5 @@
           - network
 
     - name: Debug IPv4 address of the VM
-      debug:
+      ansible.builtin.debug:
         msg: "VM Primary IPv4 Address: {{ ansible_default_ipv4.address }}"
