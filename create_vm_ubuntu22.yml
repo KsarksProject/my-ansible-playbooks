@@ -1,63 +1,55 @@
----
 - name: Create VM from Proxmox Template
   hosts: proxmox
   vars:
-    ansible_python_interpreter: /opt/venv/bin/python
+    vm_name: "SRVCVDUBUNTU"  # Имя создаваемой виртуальной машины
+    template_name: "UbuntuTemplate"  # Шаблон для клонирования
+    proxmox_api_host: "172.28.0.251"  # Хост Proxmox
+    proxmox_api_user: "root@pam"  # Пользователь для доступа к API
+    proxmox_api_password: "{{ proxmox_pass }}"  # Пароль для API
+
   tasks:
-    - name: Install necessary packages via apt
-      ansible.builtin.apt:
-        name:
-          - python3-pip
-          - python3-setuptools
-          - python3-venv
-        state: present
-      become: yes
-
-    - name: Create virtual environment
-      ansible.builtin.command:
-        cmd: python3 -m venv /opt/venv
-      args:
-        creates: /opt/venv
-
-    - name: Install requests module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install requests
-
-    - name: Install proxmoxer module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install proxmoxer
-
+    # Клонирование шаблона виртуальной машины
     - name: Clone Proxmox template
       community.general.proxmox_kvm:
         node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_api_host }}"
         api_port: 8006
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "SRVCVDUBUNTU"
+        clone: "{{ template_name }}"
         name: "{{ vm_name }}"
         timeout: 300
-        startup: yes
       register: clone_result
 
+    # Ожидание, пока VM станет готовой
     - name: Wait for VM to be ready
       retries: 10
       delay: 15
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_api_host }}"
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
       until: clone_result is not failed
 
+    # Получение деталей виртуальной машины
     - name: Get VM details using Proxmox API
       community.general.proxmox_kvm_info:
         node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        api_host: "{{ proxmox_api_host }}"
         api_port: 8006
         validate_certs: false
       register: vm_info
 
+    # Извлечение IPv4-адресов
     - name: Extract IPv4 addresses
       debug:
         msg: >
