@@ -41,27 +41,27 @@
         name: "{{ vm_name }}"
         timeout: 300
         startup: yes
-#      register: clone_result
+      register: clone_result
 
-#    - name: Wait for VM to appear in Proxmox
-#      retries: 10
-#      delay: 15
-#      community.general.proxmox_kvm:
-#        node: pve-in
-#        api_user: "root@pam"
-#        api_password: "{{ proxmox_pass }}"
-#        api_host: 172.28.0.251
-#        api_port: 8006
-#        validate_certs: false
-#        name: "{{ vm_name }}"
-#      register: vm_ready
-#      until: vm_ready is not failed
+    - name: Wait for VM to be ready
+      retries: 10
+      delay: 15
+      until: clone_result is not failed
 
-    - name: Gather facts about VM
-      ansible.builtin.setup:
-        gather_subset:
-          - network
+    - name: Get VM details using Proxmox API
+      community.general.proxmox_kvm_info:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+      register: vm_info
 
-    - name: Debug IPv4 addresses
+    - name: Extract IPv4 addresses
       debug:
-        msg: "VM IPv4 Addresses: {{ ansible_all_ipv4_addresses }}"
+        msg: >
+          VM IPv4 Addresses: {{
+            vm_info.instances | selectattr('name', 'equalto', vm_name) | 
+            map(attribute='network') | list
+          }}
