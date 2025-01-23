@@ -60,7 +60,7 @@
         timeout: 300
         state: present
         startup: yes
-      when: not vm_exists.success
+      when: "'msg' in vm_exists and 'does not exist' in vm_exists.msg"
       register: clone_result
 
     - name: Wait for VM to appear in Proxmox
