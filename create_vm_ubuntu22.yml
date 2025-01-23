@@ -31,25 +31,22 @@
         name: "{{ vm_name }}"
         state: started
 
-#    - name: Wait for VM to be ready
-#      retries: 10
-#      delay: 15
-#      until: clone_result is not failed
+    - name: Gather VM details using Proxmox API
+      community.general.proxmox_kvm:
+          node: pve-in
+          api_user: "root@pam"
+          api_password: "{{ proxmox_pass }}"
+          api_host: 172.28.0.251
+          api_port: 8006
+          validate_certs: false
+          name: "{{ vm_name }}"
+      register: vm_info
 
-#    - name: Get VM details using Proxmox API
-#      community.general.proxmox_kvm_info:
-#        node: pve-in
-#        api_user: "root@pam"
-#        api_password: "{{ proxmox_pass }}"
-#        api_host: 172.28.0.251
-#        api_port: 8006
-#        validate_certs: false
-#      register: vm_info
-#
-#    - name: Extract IPv4 addresses
-#      debug:
-#        msg: >
-#          VM IPv4 Addresses: {{
-#            vm_info.instances | selectattr('name', 'equalto', vm_name) |
-#            map(attribute='network') | list
-#          }}
+    - name: Extract IP address from VM details
+      debug:
+        msg: >
+          VM IPv4 Address: {{
+            vm_info.instance.guest_agent['ip-addresses'] | 
+            selectattr('ip-address-type', 'equalto', 'ipv4') | 
+            map(attribute='ip-address') | join(', ')
+          }}
