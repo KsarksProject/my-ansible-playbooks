@@ -17,23 +17,23 @@
         clone: "SRVCVDUBUNTU"
         name: "{{ vm_name }}"
         timeout: 300
-#        startup: yes
+        startup: yes
       register: clone_result
 
-    - name: Start VMs
-      proxmox_kvm:
-        api_host: 172.28.0.251
-        api_password: "{{ proxmox_pass }}"
-        api_user: "root@pam"
-        vmid: "{{ item.value.vmid }}"
-        node: pve-in
-        state: started
-      loop: "{{ lookup('dict', vms) }}"
+#    - name: Start VMs
+#      proxmox_kvm:
+#        api_host: 172.28.0.251
+#        api_password: "{{ proxmox_pass }}"
+#        api_user: "root@pam"
+#        vmid: "{{ item.value.vmid }}"
+#        node: pve-in
+#        state: started
+#      loop: "{{ lookup('dict', vms) }}"
 
-    - name: Wait for VM to be ready
-      retries: 10
-      delay: 15
-      until: clone_result is not failed
+#    - name: Wait for VM to be ready
+#      retries: 10
+#      delay: 15
+#      until: clone_result is not failed
 
 #    - name: Get VM details using Proxmox API
 #      community.general.proxmox_kvm_info:
