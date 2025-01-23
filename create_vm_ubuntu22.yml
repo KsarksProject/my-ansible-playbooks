@@ -1,7 +1,6 @@
 ---
 - name: Create VM from Proxmox Template
   hosts: proxmox
-  become: yes
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
@@ -12,6 +11,7 @@
           - python3-setuptools
           - python3-venv
         state: present
+      become: yes
 
     - name: Create virtual environment
       ansible.builtin.command:
@@ -22,16 +22,10 @@
     - name: Install requests module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install requests
-      environment:
-        VIRTUAL_ENV: /opt/venv
-        PATH: /opt/venv/bin:{{ ansible_env.PATH }}
 
     - name: Install proxmoxer module in virtual environment
       ansible.builtin.command:
         cmd: /opt/venv/bin/pip install proxmoxer
-      environment:
-        VIRTUAL_ENV: /opt/venv
-        PATH: /opt/venv/bin:{{ ansible_env.PATH }}
 
     - name: Check if VM already exists
       community.general.proxmox_kvm:
@@ -45,7 +39,7 @@
       register: vm_exists
       failed_when: false
 
-    - name: Clone Proxmox template
+    - name: Clone Proxmox template if VM does not exist
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -58,22 +52,38 @@
         clone: "SRVCVDUBUNTU"
         name: "{{ vm_name }}"
         timeout: 300
-        state: present
         startup: yes
-      when: "'msg' in vm_exists and 'does not exist' in vm_exists.msg"
+      when: vm_exists is failed
       register: clone_result
 
     - name: Wait for VM to appear in Proxmox
-      ansible.builtin.wait_for:
-        path: "/var/lib/vz/images/{{ clone_result.id }}/vm-{{ clone_result.id }}.conf"
-        delay: 15
-        retries: 10
+      retries: 10
+      delay: 15
+      community.general.proxmox_kvm:
+        node: pve-in
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+        name: "{{ vm_name }}"
+      register: vm_ready
+      until: vm_ready is not failed
 
-    - name: Gather facts about VM
-      ansible.builtin.setup:
-        gather_subset:
-          - network
+    - name: Gather VM facts using Proxmox info
+      community.general.proxmox_kvm_info:
+        api_user: "root@pam"
+        api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
+        validate_certs: false
+      register: vms_info
 
-    - name: Debug IPv4 address of the VM
-      ansible.builtin.debug:
-        msg: "VM Primary IPv4 Address: {{ ansible_default_ipv4.address }}"
+    - name: Find IP address of the created VM
+      debug:
+        msg: >
+          {{
+            (vms_info.instances | selectattr('name', 'equalto', vm_name) | list | first).guest_agent['ip-addresses']
+            | selectattr('ip-address-type', 'equalto', 'ipv4') | map(attribute='ip-address') | join(', ')
+          }}
+
