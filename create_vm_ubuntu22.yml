@@ -41,21 +41,21 @@
         name: "{{ vm_name }}"
         timeout: 300
         startup: yes
-      register: clone_result
+#      register: clone_result
 
-    - name: Wait for VM to appear in Proxmox
-      retries: 10
-      delay: 15
-      community.general.proxmox_kvm:
-        node: pve-in
-        api_user: "root@pam"
-        api_password: "{{ proxmox_pass }}"
-        api_host: 172.28.0.251
-        api_port: 8006
-        validate_certs: false
-        name: "{{ vm_name }}"
-      register: vm_ready
-      until: vm_ready is not failed
+#    - name: Wait for VM to appear in Proxmox
+#      retries: 10
+#      delay: 15
+#      community.general.proxmox_kvm:
+#        node: pve-in
+#        api_user: "root@pam"
+#        api_password: "{{ proxmox_pass }}"
+#        api_host: 172.28.0.251
+#        api_port: 8006
+#        validate_certs: false
+#        name: "{{ vm_name }}"
+#      register: vm_ready
+#      until: vm_ready is not failed
 
     - name: Gather facts about VM
       ansible.builtin.setup:
