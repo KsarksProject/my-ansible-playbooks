@@ -1,32 +1,9 @@
 ---
 - name: Create VM from Proxmox Template (T-WIN-2022)
-  hosts: 172.28.0.251
+  hosts: proxmox
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
-    - name: Install necessary packages via apt
-      ansible.builtin.apt:
-        name:
-          - python3-pip
-          - python3-setuptools
-          - python3-venv
-        state: present
-      become: yes
-
-    - name: Create virtual environment
-      ansible.builtin.command:
-        cmd: python3 -m venv /opt/venv
-      args:
-        creates: /opt/venv
-
-    - name: Install requests module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install requests
-
-    - name: Install proxmoxer module in virtual environment
-      ansible.builtin.command:
-        cmd: /opt/venv/bin/pip install proxmoxer
-
     - name: Clone Proxmox template (T-WIN-2022)
       community.general.proxmox_kvm:
         node: pve-in
@@ -35,70 +12,25 @@
         api_host: 172.28.0.251
         api_port: 8006
         validate_certs: false
+        storage: "local-lvm"
         full: true
         clone: "T-WIN-2022"
         name: "{{ vm_name }}"
-        state: present
-      register: cloned_vm
+        timeout: 300
+        startup: yes
+      register: clone_result
 
-    - name: Set cloud-init configuration
+    - name: Start VM
       community.general.proxmox_kvm:
-        api_host: 172.28.0.251
+        node: pve-in
         api_user: "root@pam"
         api_password: "{{ proxmox_pass }}"
+        api_host: 172.28.0.251
+        api_port: 8006
         validate_certs: false
-        node: pve-in
-        vmid: "{{ cloned_vm.id }}"
-        cicustom:
-          user: "local:snippets/user-data.yaml"
-          meta: "local:snippets/meta-data.yaml"
-        ipconfig0: "ip={{ new_IP }},gw=172.28.0.1"
-        onboot: 1
-        memory: 2048
-        cores: 2
+        name: "{{ vm_name }}"
         state: started
 
-    - name: Debug cloned VM information
-      debug:
-        var: cloned_vm
-
-- name: Configure VM (T-WIN-2022)
-  hosts: "{{ new_IP }}"
-  vars:
-    ansible_connection: ssh
-    ansible_user: "Администратор"
-    ansible_password: !vault |
-      $ANSIBLE_VAULT;1.1;AES256
-      EncryptedPasswordPlaceholder
-    ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-  tasks:
-    - name: Check network interfaces
-      ansible.builtin.command: |
-        netsh interface show interface
-      register: interface_check
-
-    - name: Debug network interfaces
-      debug:
-        var: interface_check.stdout_lines
-
-    - name: Update IP address and subnet mask
-      ansible.builtin.shell: |
-        netsh interface ip set address "Ethernet" static {{ new_IP }} 255.255.0.0 172.28.0.1
-      when: '"Ethernet" in interface_check.stdout'
-      become: yes
-
-    - name: Update Hostname
-      ansible.builtin.shell: |
-        netdom renamecomputer %COMPUTERNAME% /NewName:{{ hostname }} /Force
-      become: yes
-
-    - name: Reboot VM to apply changes
-      ansible.windows.win_reboot:
-        reboot_timeout: 300
-
-    - name: Wait for VM to become reachable after reboot
-      ansible.builtin.wait_for:
-        host: "{{ new_IP }}"
-        port: 22
-        delay: 30
-        timeout: 300
+    - name: Wait for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
