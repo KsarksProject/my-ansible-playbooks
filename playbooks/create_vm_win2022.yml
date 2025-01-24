@@ -14,9 +14,9 @@
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "T-WIN-2022"
+        clone: "newvm"
         name: "{{ vm_name }}"
-        timeout: 300
+        timeout: 700
         startup: yes
       register: clone_result
 
