@@ -2,5 +2,3 @@
 roles:
   - src: geerlingguy.apache
     version: 3.0.0
-  - src: geerlingguy.mysql
-    version: 2.9.0
