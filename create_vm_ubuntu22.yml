@@ -30,3 +30,7 @@
         validate_certs: false
         name: "{{ vm_name }}"
         state: started
+
+    - name: Wait for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
