@@ -1,4 +1,5 @@
 ---
 collections:
   - name: community.general
-#  - name: ansible.windows
+    version: 10.2.0
+  - name: ansible.windows
