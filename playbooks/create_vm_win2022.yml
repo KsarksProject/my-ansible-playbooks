@@ -1,10 +1,10 @@
 ---
-- name: Create VM from Proxmox Template (T-WIN-2022)
+- name: Create VM from Proxmox Template (TWIN2022)
   hosts: proxmox
   vars:
     ansible_python_interpreter: /opt/venv/bin/python
   tasks:
-    - name: Clone Proxmox template (T-WIN-2022)
+    - name: Clone Proxmox template (TWIN2022)
       community.general.proxmox_kvm:
         node: pve-in
         api_user: "root@pam"
@@ -14,7 +14,7 @@
         validate_certs: false
         storage: "local-lvm"
         full: true
-        clone: "newvm"
+        clone: "TWIN2022"
         name: "{{ vm_name }}"
         timeout: 700
         startup: yes
