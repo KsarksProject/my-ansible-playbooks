@@ -1,23 +1,24 @@
 ---
-- name: Deploy VM and configure optional components
+- name: Create VM on Proxmox from ISO
   hosts: localhost
   gather_facts: false
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
-    proxmox_password: "{{ proxmox_pass }}"  # Укажите пароль в AWX
+    proxmox_password: "{{ proxmox_pass }}"  # Пароль передаётся через переменные окружения
     proxmox_node: "pve-in"
     storage: "srv-bs2"
     iso_image: "ubuntu-22.04.4-live-server-amd64.iso"
-    vm_id: 151  # Уникальный ID новой VM
+    vm_id: 110  # Уникальный ID новой VM
     vm_name: "Ubuntu_VM_AWX"
     memory: 2048
     cpus: 2
     disk_size: "10G"
-    os_type: "l26"  # Для Linux
+    net_bridge: "vmbr0"  # Сетевой мост
+    os_type: "l26"  # Тип ОС (Linux)
 
   tasks:
-    - name: Clone VM from ISO
+    - name: Create VM from ISO
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -31,10 +32,11 @@
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
         disk: "{{ disk_size }}"
+        net0: "virtio,bridge={{ net_bridge }}"
         ostype: "{{ os_type }}"
         state: present
         timeout: 300
-      register: vm_result
+      register: vm_creation
 
     - name: Start the VM
       community.general.proxmox_kvm:
@@ -50,35 +52,39 @@
       pause:
         seconds: 60
 
-    - name: Configure the VM (Install Optional Components)
-      hosts: all
-      gather_facts: true
-      tasks:
-        - name: Update apt cache
-          apt:
-            update_cache: yes
+- name: Configure the VM (Install Optional Components)
+  hosts: all
+  gather_facts: true
+  vars:
+    docker_install: false
+    nginx_install: false
 
-        - name: Install Docker (if selected)
-          when: docker_install | bool
-          apt:
-            name: docker.io
-            state: present
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
 
-        - name: Install NGINX (if selected)
-          when: nginx_install | bool
-          apt:
-            name: nginx
-            state: present
+    - name: Install Docker (if selected)
+      when: docker_install | bool
+      apt:
+        name: docker.io
+        state: present
 
-        - name: Restart NGINX (if installed)
-          when: nginx_install | bool
-          service:
-            name: nginx
-            state: restarted
+    - name: Install NGINX (if selected)
+      when: nginx_install | bool
+      apt:
+        name: nginx
+        state: present
 
-        - name: Display installation summary
-          debug:
-            msg: >
-              Установка завершена.
-              Docker установлен: {{ docker_install }}.
-              NGINX установлен: {{ nginx_install }}.
+    - name: Restart NGINX (if installed)
+      when: nginx_install | bool
+      service:
+        name: nginx
+        state: restarted
+
+    - name: Display installation summary
+      debug:
+        msg: >
+          Установка завершена.
+          Docker установлен: {{ docker_install }}.
+          NGINX установлен: {{ nginx_install }}.
