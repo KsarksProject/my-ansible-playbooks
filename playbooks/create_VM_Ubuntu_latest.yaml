@@ -1,0 +1,131 @@
+---
+- name: Deploy Ubuntu Cloud VMs on Proxmox
+  hosts: proxmox
+  gather_facts: no
+  vars:
+    base_id: 8000
+    base_name: ubuntu-cloud
+    auth:
+      user: "{{ proxmox_user | default('root') }}"  # Пользователь (по умолчанию root)
+      password: "{{ proxmox_pass }}"  # Пароль берётся из Credential
+      public_ssh_key: "{{ public_ssh_key }}"  # Публичный ключ передаётся из Credential
+    cloud_image_url: https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img
+    cloud_image_filename: ubuntu-24.04-server-cloudimg-amd64.img
+    vm_list:
+      - id: 201
+        name: ubuntu-vm1
+        disk_size: 15G
+        net0: virtio,bridge=vmbr0,tag=100
+        ipconfig0: 'ip=dhcp'
+        cores: 2
+        memory: 2048
+      - id: 202
+        name: ubuntu-vm2
+        disk_size: 20G
+        net0: virtio,bridge=vmbr0,tag=105
+        ipconfig0: 'ip=dhcp'
+        cores: 4
+        memory: 4096
+
+  tasks:
+    # Проверка наличия базовой VM
+    - name: Check if base VM already exists
+      ansible.builtin.command: qm status {{ base_id }}
+      register: base_vm_check
+      failed_when: false
+      changed_when: false
+
+    # Создание базовой VM с использованием Cloud-Init, если не существует
+    - name: Setup Cloud-VM with image {{ cloud_image_filename }}
+      block:
+        - name: Download latest Ubuntu cloud image
+          ansible.builtin.get_url:
+            url: '{{ cloud_image_url }}'
+            dest: '/tmp/{{ cloud_image_filename }}'
+
+        - name: Create public-ssh-key
+          ansible.builtin.copy:
+            content: '{{ auth.public_ssh_key }}'
+            dest: '/tmp/public-ssh-key.pub'
+
+        - name: Create base VM
+          ansible.builtin.command: >
+            qm create {{ base_id }}
+            --name {{ base_name }}
+            --memory 2048
+            --cores 2
+            --net0 virtio,bridge=vmbr0
+
+        - name: Import disk to VM
+          ansible.builtin.command: >
+            qm importdisk {{ base_id }} /tmp/{{ cloud_image_filename }} local-lvm
+
+        - name: Configure VM hardware and Cloud-Init
+          ansible.builtin.command: >
+            qm set {{ base_id }}
+            --scsihw virtio-scsi-pci
+            --scsi0 local-lvm:vm-{{ base_id }}-disk-0
+            --ide2 local-lvm:cloudinit
+            --boot c --bootdisk scsi0
+            --serial0 socket --vga serial0
+            --agent enabled=1
+            --sshkeys /tmp/public-ssh-key.pub
+            --ciuser {{ auth.user }}
+            --cipassword {{ auth.password }}
+
+        - name: Remove public-ssh-key
+          ansible.builtin.file:
+            path: /tmp/public-ssh-key.pub
+            state: absent
+
+        - name: Set VM as template
+          ansible.builtin.command: qm template {{ base_id }}
+
+      when: base_vm_check.rc != 0
+
+    # Проверка наличия VM в списке vm_list
+    - name: Check if VM IDs in vm_list are already in use
+      ansible.builtin.command: qm status {{ item.id }}
+      loop: '{{ vm_list }}'
+      register: vm_check_results
+      failed_when: false
+      changed_when: false
+
+    # Клонирование базовой VM
+    - name: Clone and configure VMs
+      block:
+        - name: Clone VM and resize disk
+          ansible.builtin.command: >
+            qm clone {{ base_id }} {{ item.id }}
+            --name {{ item.name }}
+            --full
+          loop: '{{ vm_list }}'
+
+        - name: Configure disk size
+          ansible.builtin.command: >
+            qm resize {{ item.id }} scsi0 {{ item.disk_size }}
+          loop: '{{ vm_list }}'
+
+        - name: Configure VM cores
+          ansible.builtin.command: >
+            qm set {{ item.id }} --cores {{ item.cores }}
+          when: item.cores is defined
+          loop: '{{ vm_list }}'
+
+        - name: Configure VM memory
+          ansible.builtin.command: >
+            qm set {{ item.id }} --memory {{ item.memory }}
+          when: item.memory is defined
+          loop: '{{ vm_list }}'
+
+        - name: Configure network settings
+          ansible.builtin.command: >
+            qm set {{ item.id }} --net0 {{ item.net0 }}
+          when: item.net0 is defined
+          loop: '{{ vm_list }}'
+
+        - name: Configure IP settings
+          ansible.builtin.command: >
+            qm set {{ item.id }} --ipconfig0 {{ item.ipconfig0 }}
+          when: item.ipconfig0 is defined
+          loop: '{{ vm_list }}'
