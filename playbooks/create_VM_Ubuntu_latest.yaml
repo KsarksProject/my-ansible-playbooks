@@ -4,8 +4,8 @@
   gather_facts: no
   vars:
     auth:
-      user: "{{ proxmox_user | default('root') }}"  # Пользователь (по умолчанию root)
-      password: "{{ proxmox_pass }}"  # Пароль передаётся через AWX
+      user: "{{ proxmox_user | default('root') }}"
+      password: "{{ proxmox_pass }}"
     cloud_image_url: https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img
     cloud_image_filename: ubuntu-24.04-server-cloudimg-amd64.img
     base_id: 8000
@@ -71,15 +71,7 @@
 
       when: base_vm_check.rc != 0
 
-    # Проверка наличия VM в списке vm_list
-    - name: Check if VM IDs in vm_list are already in use
-      ansible.builtin.command: qm status {{ item.id }}
-      loop: '{{ vm_list }}'
-      register: vm_check_results
-      failed_when: false
-      changed_when: false
-
-    # Клонирование базовой VM
+    # Клонирование и настройка VM
     - name: Clone and configure VMs
       block:
         - name: Clone VM and resize disk
@@ -117,3 +109,27 @@
             qm set {{ item.id }} --ipconfig0 {{ item.ipconfig0 }}
           when: item.ipconfig0 is defined
           loop: '{{ vm_list }}'
+
+        - name: Start VMs
+          ansible.builtin.command: >
+            qm start {{ item.id }}
+          loop: '{{ vm_list }}'
+
+    # Установка QEMU Guest Agent
+    - name: Install QEMU Guest Agent
+      delegate_to: "{{ item.name }}"
+      ansible.builtin.shell: |
+        apt-get update -y && apt-get install qemu-guest-agent -y && systemctl enable qemu-guest-agent && systemctl start qemu-guest-agent
+      loop: '{{ vm_list }}'
+
+    # Получение IP-адресов VMs через QEMU Agent
+    - name: Get IP address of VMs
+      ansible.builtin.command: >
+        qm guest exec {{ item.id }} -- ip -o -4 addr show
+      loop: '{{ vm_list }}'
+      register: vm_ips
+
+    - name: Print VM IPs
+      ansible.builtin.debug:
+        msg: "VM ID {{ item.item.id }} has IP address: {{ item.stdout }}"
+      loop: '{{ vm_ips.results }}'
