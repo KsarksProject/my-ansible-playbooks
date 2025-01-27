@@ -32,8 +32,8 @@
           model: "virtio"
           bridge: "{{ net_bridge }}"
           firewall: true
-        scsi0: "{{ storage }}:size={{ disk_size }}"  # Настройка SCSI-диска
-        ide2: "{{ storage }}:iso={{ iso_image }},media=cdrom"  # Привязка ISO-образа
+        scsi: "local-lvm:{{ disk_size }}"  # Настройка SCSI-диска
+        ide: "{{ storage }}:iso={{ iso_image }}"  # Привязка ISO-образа к CD-ROM
         ostype: "l26"  # Linux
         boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
         state: present
