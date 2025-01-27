@@ -25,18 +25,19 @@
         api_password: "{{ proxmox_password }}"
         validate_certs: false
         node: "{{ proxmox_node }}"
-        storage: "{{ storage }}"
-        iso: "{{ iso_image }}"
         vmid: "{{ vm_id }}"
         name: "{{ vm_name }}"
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
-        disk: "{{ disk_size }}"
-        net0: "virtio,bridge={{ net_bridge }}"
+        net:
+          - model=virtio,bridge="{{ net_bridge }}"
+        scsi:
+          - storage="{{ storage }}",size="{{ disk_size }}"
         ostype: "{{ os_type }}"
+        boot: "cdn"  # Boot order: CD-ROM, Disk, Network
+        ide2: "{{ storage }}:iso={{ iso_image }}"  # ISO для установки
         state: present
         timeout: 300
-      register: vm_creation
 
     - name: Start the VM
       community.general.proxmox_kvm:
