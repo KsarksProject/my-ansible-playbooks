@@ -1,0 +1,84 @@
+---
+- name: Deploy VM and configure optional components
+  hosts: localhost
+  gather_facts: false
+  vars:
+    proxmox_host: "172.28.0.251"
+    proxmox_user: "root@pam"
+    proxmox_password: "{{ proxmox_pass }}"  # Укажите пароль в AWX
+    proxmox_node: "pve-in"
+    storage: "srv-bs2"
+    iso_image: "ubuntu-22.04.4-live-server-amd64.iso"
+    vm_id: 151  # Уникальный ID новой VM
+    vm_name: "Ubuntu_VM_AWX"
+    memory: 2048
+    cpus: 2
+    disk_size: "10G"
+    os_type: "l26"  # Для Linux
+
+  tasks:
+    - name: Clone VM from ISO
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        validate_certs: false
+        node: "{{ proxmox_node }}"
+        storage: "{{ storage }}"
+        iso: "{{ iso_image }}"
+        vmid: "{{ vm_id }}"
+        name: "{{ vm_name }}"
+        memory: "{{ memory }}"
+        cores: "{{ cpus }}"
+        disk: "{{ disk_size }}"
+        ostype: "{{ os_type }}"
+        state: present
+        timeout: 300
+      register: vm_result
+
+    - name: Start the VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_password: "{{ proxmox_password }}"
+        validate_certs: false
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        state: started
+
+    - name: Wait for VM to start
+      pause:
+        seconds: 60
+
+    - name: Configure the VM (Install Optional Components)
+      hosts: all
+      gather_facts: true
+      tasks:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+
+        - name: Install Docker (if selected)
+          when: docker_install | bool
+          apt:
+            name: docker.io
+            state: present
+
+        - name: Install NGINX (if selected)
+          when: nginx_install | bool
+          apt:
+            name: nginx
+            state: present
+
+        - name: Restart NGINX (if installed)
+          when: nginx_install | bool
+          service:
+            name: nginx
+            state: restarted
+
+        - name: Display installation summary
+          debug:
+            msg: >
+              Установка завершена.
+              Docker установлен: {{ docker_install }}.
+              NGINX установлен: {{ nginx_install }}.
