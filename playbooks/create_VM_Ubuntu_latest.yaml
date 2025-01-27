@@ -117,7 +117,7 @@
 
         - name: Wait for 30 seconds
           ansible.builtin.pause:
-            seconds: 30
+            seconds: 40
 
     # Установка QEMU Guest Agent
     - name: Install QEMU Guest Agent
