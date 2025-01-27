@@ -1,5 +1,5 @@
 ---
-- name: Create VM on Proxmox from ISO
+- name: Create VM on Proxmox with specific hardware settings
   hosts: localhost
   gather_facts: false
   vars:
@@ -7,18 +7,17 @@
     proxmox_user: "root@pam"
     proxmox_password: "{{ proxmox_pass }}"  # Пароль передаётся через переменные окружения
     proxmox_node: "pve-in"
-    storage: "srv-bs2"
+    storage: "local-lvm"
     iso_image: "ubuntu-22.04.4-live-server-amd64.iso"
     vm_id: 110  # Уникальный ID новой VM
     vm_name: "Ubuntu_VM_AWX"
-    memory: 2048
-    cpus: 2
-    disk_size: "10G"
-    net_bridge: "vmbr0"  # Сетевой мост
-    os_type: "l26"  # Тип ОС (Linux)
+    memory: 4096  # 4 ГБ
+    cpus: 1  # 1 ядро
+    disk_size: "32G"  # Размер диска
+    net_bridge: "vmbr1"  # Сетевой мост
 
   tasks:
-    - name: Create VM from ISO
+    - name: Create VM with SCSI disk and CD-ROM
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -29,13 +28,11 @@
         name: "{{ vm_name }}"
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
-        net:
-          - model=virtio,bridge="{{ net_bridge }}"
-        scsi:
-          - storage="{{ storage }}",size="{{ disk_size }}"
-        ostype: "{{ os_type }}"
-        boot: "cdn"  # Boot order: CD-ROM, Disk, Network
-        ide2: "{{ storage }}:iso={{ iso_image }}"  # ISO для установки
+        net: "virtio,bridge={{ net_bridge }},firewall=1"
+        scsi0: "{{ storage }}:size={{ disk_size }}"  # Настройка SCSI-диска
+        ide2: "{{ storage }}:iso={{ iso_image }},media=cdrom"  # Привязка ISO-образа
+        ostype: "l26"  # Linux
+        boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
         state: present
         timeout: 300
 
