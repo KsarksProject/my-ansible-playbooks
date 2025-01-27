@@ -115,9 +115,9 @@
             qm start {{ item.id }}
           loop: '{{ vm_list }}'
 
-        - name: Wait for 30 seconds
+        - name: Wait for 180 seconds
           ansible.builtin.pause:
-            seconds: 40
+            seconds: 180
 
     # Установка QEMU Guest Agent
     - name: Install QEMU Guest Agent
