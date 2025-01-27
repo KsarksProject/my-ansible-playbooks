@@ -14,14 +14,14 @@
       - id: 201
         name: ubuntu-vm1
         disk_size: 15G
-        net0: virtio,bridge=vmbr1,tag=100
+        net0: virtio,bridge=vmbr1
         ipconfig0: 'ip=dhcp'
         cores: 2
         memory: 2048
       - id: 202
         name: ubuntu-vm2
         disk_size: 20G
-        net0: virtio,bridge=vmbr1,tag=105
+        net0: virtio,bridge=vmbr1
         ipconfig0: 'ip=dhcp'
         cores: 4
         memory: 4096
