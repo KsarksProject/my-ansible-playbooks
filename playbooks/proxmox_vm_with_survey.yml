@@ -9,53 +9,54 @@
     proxmox_node: "pve-in"
     storage: "local-lvm"
     iso_image: "ubuntu-22.04.4-live-server-amd64.iso"
-    vm_id: 110  # Уникальный ID новой VM
+    vm_id: 110
     vm_name: "Ubuntu_VM_AWX"
-    memory: 4096  # 4 ГБ
-    cpus: 1  # 1 ядро
-    disk_size: "32G"  # Размер диска
-    net_bridge: "vmbr1"  # Сетевой мост
+    memory: 4096
+    cores: 1
+    disk_size: "32G"
+    net_bridge: "vmbr1"
 
   tasks:
-    - name: Create VM
-      community.general.proxmox_kvm:
+    - name: Create VM from ISO
+      proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
-        validate_certs: false
         node: "{{ proxmox_node }}"
         vmid: "{{ vm_id }}"
         name: "{{ vm_name }}"
         memory: "{{ memory }}"
-        cores: "{{ cpus }}"
-        net: "virtio,bridge={{ net_bridge }}"  # Настройка сети
-        scsi0: "{{ storage }}:{{ disk_size }}"  # Настройка диска
-        ide0: "{{ storage }}:iso={{ iso_image }}"  # Привязка ISO как CD-ROM
-        ostype: "l26"  # Тип ОС
-        boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
+        cores: "{{ cores }}"
+        net0: "virtio,bridge={{ net_bridge }}"
+        ide2: "{{ storage }}:iso={{ iso_image }}"
+        scsihw: virtio-scsi-pci
+        scsi0: "{{ storage }}:{{ disk_size }}"
+        bootdisk: scsi0
+        ostype: l26
+        boot: cdn
         state: present
-        timeout: 300
+        validate_certs: false
 
     - name: Start the VM
-      community.general.proxmox_kvm:
+      proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_password: "{{ proxmox_password }}"
-        validate_certs: false
         node: "{{ proxmox_node }}"
         vmid: "{{ vm_id }}"
         state: started
+        validate_certs: false
 
     - name: Wait for VM to start
       pause:
         seconds: 30
 
-    - name: Display VM creation status
+    - name: Display VM creation details
       debug:
         msg: >
-          Виртуальная машина "{{ vm_name }}" создана с ID {{ vm_id }} и запущена.
+          Виртуальная машина "{{ vm_name }}" создана с ID {{ vm_id }}.
           Параметры:
           - Память: {{ memory }} MB
-          - CPU: {{ cpus }} ядро(а)
+          - CPU: {{ cores }} ядро(а)
           - Диск: {{ disk_size }}
           - Сеть: {{ net_bridge }}
