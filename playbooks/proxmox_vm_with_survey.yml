@@ -5,7 +5,7 @@
   vars:
     proxmox_host: "172.28.0.251"
     proxmox_user: "root@pam"
-    proxmox_password: "{{ proxmox_pass }}"  # Пароль передаётся через переменные окружения
+    proxmox_password: "{{ proxmox_pass }}"
     proxmox_node: "pve-in"
     storage: "local-lvm"
     iso_image: "ubuntu-22.04.4-live-server-amd64.iso"
@@ -17,7 +17,7 @@
     net_bridge: "vmbr1"  # Сетевой мост
 
   tasks:
-    - name: Create VM with SCSI disk and CD-ROM
+    - name: Create VM
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
@@ -28,16 +28,10 @@
         name: "{{ vm_name }}"
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
-        net:
-          model: "virtio"
-          bridge: "{{ net_bridge }}"
-        scsi0:
-          storage: "{{ storage }}"
-          size: "{{ disk_size }}"
-        ide2:
-          file: "{{ storage }}:iso={{ iso_image }}"
-          media: "cdrom"
-        ostype: "l26"  # Linux
+        net: "virtio,bridge={{ net_bridge }}"  # Настройка сети
+        scsi0: "{{ storage }}:{{ disk_size }}"  # Настройка диска
+        ide0: "{{ storage }}:iso={{ iso_image }}"  # Привязка ISO как CD-ROM
+        ostype: "l26"  # Тип ОС
         boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
         state: present
         timeout: 300
@@ -54,7 +48,7 @@
 
     - name: Wait for VM to start
       pause:
-        seconds: 60
+        seconds: 30
 
     - name: Display VM creation status
       debug:
