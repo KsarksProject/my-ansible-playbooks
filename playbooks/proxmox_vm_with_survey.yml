@@ -1,5 +1,5 @@
 ---
-- name: Create VM on Proxmox with specific hardware settings
+- name: Create VM on Proxmox from ISO
   hosts: localhost
   gather_facts: false
   vars:
@@ -29,11 +29,14 @@
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
         net:
-          model: "virtio"
-          bridge: "{{ net_bridge }}"
-          firewall: true
-        scsi: "local-lvm:{{ disk_size }}"  # Настройка SCSI-диска
-        ide: "{{ storage }}:iso={{ iso_image }}"  # Привязка ISO-образа к CD-ROM
+          - model: "virtio"
+            bridge: "{{ net_bridge }}"
+        scsi:
+          - storage: "{{ storage }}"
+            size: "{{ disk_size }}"
+        ide:
+          - file: "{{ iso_image }}"
+            media: "cdrom"
         ostype: "l26"  # Linux
         boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
         state: present
@@ -53,39 +56,12 @@
       pause:
         seconds: 60
 
-- name: Configure the VM (Install Optional Components)
-  hosts: all
-  gather_facts: true
-  vars:
-    docker_install: false
-    nginx_install: false
-
-  tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-
-    - name: Install Docker (if selected)
-      when: docker_install | bool
-      apt:
-        name: docker.io
-        state: present
-
-    - name: Install NGINX (if selected)
-      when: nginx_install | bool
-      apt:
-        name: nginx
-        state: present
-
-    - name: Restart NGINX (if installed)
-      when: nginx_install | bool
-      service:
-        name: nginx
-        state: restarted
-
-    - name: Display installation summary
+    - name: Display VM creation status
       debug:
         msg: >
-          Установка завершена.
-          Docker установлен: {{ docker_install }}.
-          NGINX установлен: {{ nginx_install }}.
+          Виртуальная машина "{{ vm_name }}" создана с ID {{ vm_id }} и запущена.
+          Параметры:
+          - Память: {{ memory }} MB
+          - CPU: {{ cpus }} ядро(а)
+          - Диск: {{ disk_size }}
+          - Сеть: {{ net_bridge }}
