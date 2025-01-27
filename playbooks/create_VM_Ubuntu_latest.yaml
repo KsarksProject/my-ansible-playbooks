@@ -115,6 +115,10 @@
             qm start {{ item.id }}
           loop: '{{ vm_list }}'
 
+        - name: Wait for 30 seconds
+          ansible.builtin.pause:
+            seconds: 30
+
     # Установка QEMU Guest Agent
     - name: Install QEMU Guest Agent
       delegate_to: "{{ item.name }}"
@@ -122,14 +126,3 @@
         apt-get update -y && apt-get install qemu-guest-agent -y && systemctl enable qemu-guest-agent && systemctl start qemu-guest-agent
       loop: '{{ vm_list }}'
 
-    # Получение IP-адресов VMs через QEMU Agent
-    - name: Get IP address of VMs
-      ansible.builtin.command: >
-        qm guest exec {{ item.id }} -- ip -o -4 addr show
-      loop: '{{ vm_list }}'
-      register: vm_ips
-
-    - name: Print VM IPs
-      ansible.builtin.debug:
-        msg: "VM ID {{ item.item.id }} has IP address: {{ item.stdout }}"
-      loop: '{{ vm_ips.results }}'
