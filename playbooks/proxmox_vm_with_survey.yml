@@ -29,14 +29,14 @@
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
         net:
-          - model: "virtio"
-            bridge: "{{ net_bridge }}"
-        scsi:
-          - storage: "{{ storage }}"
-            size: "{{ disk_size }}"
-        ide:
-          - file: "{{ iso_image }}"
-            media: "cdrom"
+          model: "virtio"
+          bridge: "{{ net_bridge }}"
+        scsi0:
+          storage: "{{ storage }}"
+          size: "{{ disk_size }}"
+        ide2:
+          file: "{{ storage }}:iso={{ iso_image }}"
+          media: "cdrom"
         ostype: "l26"  # Linux
         boot: "cdn"  # Порядок загрузки: CD-ROM -> Disk -> Network
         state: present
