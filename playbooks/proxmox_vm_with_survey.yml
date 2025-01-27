@@ -28,7 +28,10 @@
         name: "{{ vm_name }}"
         memory: "{{ memory }}"
         cores: "{{ cpus }}"
-        net: "virtio,bridge={{ net_bridge }},firewall=1"
+        net:
+          model: "virtio"
+          bridge: "{{ net_bridge }}"
+          firewall: true
         scsi0: "{{ storage }}:size={{ disk_size }}"  # Настройка SCSI-диска
         ide2: "{{ storage }}:iso={{ iso_image }},media=cdrom"  # Привязка ISO-образа
         ostype: "l26"  # Linux
