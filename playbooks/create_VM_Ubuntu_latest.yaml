@@ -1,3 +1,4 @@
+---
 - name: Deploy Ubuntu Cloud VMs on Proxmox
   hosts: proxmox
   gather_facts: no
@@ -28,14 +29,10 @@
   tasks:
     # Проверка наличия базовой VM
     - name: Check if base VM already exists
-      community.general.proxmox:
-        api_host: "{{ proxmox_host }}"
-        api_user: "{{ auth.user }}"
-        api_password: "{{ auth.password }}"
-        vmid: "{{ base_id }}"
-        state: present
+      ansible.builtin.command: qm status {{ base_id }}
       register: base_vm_check
-      ignore_errors: yes
+      failed_when: false
+      changed_when: false
 
     # Создание базовой VM
     - name: Setup Cloud-VM with image {{ cloud_image_filename }}
@@ -46,137 +43,86 @@
             dest: '/tmp/{{ cloud_image_filename }}'
 
         - name: Create base VM
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ base_id }}"
-            name: "{{ base_name }}"
-            memory: 2048
-            cores: 2
-            net:
-              net0: "virtio,bridge=vmbr1"
-            state: present
+          ansible.builtin.command: >
+            qm create {{ base_id }}
+            --name {{ base_name }}
+            --memory 2048
+            --cores 2
+            --net0 virtio,bridge=vmbr1
 
         - name: Import disk to VM
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ base_id }}"
-            disk: "scsi0"
-            storage: "local-lvm"
-            image: "/tmp/{{ cloud_image_filename }}"
+          ansible.builtin.command: >
+            qm importdisk {{ base_id }} /tmp/{{ cloud_image_filename }} local-lvm
 
         - name: Configure VM hardware and Cloud-Init
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ base_id }}"
-            scsihw: "virtio-scsi-pci"
-            scsi0: "local-lvm:vm-{{ base_id }}-disk-0"
-            ide2: "local-lvm:cloudinit"
-            boot: "c"
-            bootdisk: "scsi0"
-            serial0: "socket"
-            vga: "serial0"
-            agent: "enabled=1"
-            ciuser: "{{ auth.user }}"
-            cipassword: "{{ auth.password }}"
+          ansible.builtin.command: >
+            qm set {{ base_id }}
+            --scsihw virtio-scsi-pci
+            --scsi0 local-lvm:vm-{{ base_id }}-disk-0
+            --ide2 local-lvm:cloudinit
+            --boot c --bootdisk scsi0
+            --serial0 socket --vga serial0
+            --agent enabled=1
+            --ciuser {{ auth.user }}
+            --cipassword {{ auth.password }}
 
         - name: Set VM as template
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ base_id }}"
-            template: yes
+          ansible.builtin.command: qm template {{ base_id }}
 
-      when: base_vm_check is failed
+      when: base_vm_check.rc != 0
 
     # Клонирование и настройка VM
     - name: Clone and configure VMs
       block:
         - name: Clone VM and resize disk
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ base_id }}"
-            newid: "{{ item.id }}"
-            name: "{{ item.name }}"
-            full: yes
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm clone {{ base_id }} {{ item.id }}
+            --name {{ item.name }}
+            --full
+          loop: '{{ vm_list }}'
 
         - name: Configure disk size
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            disk: "scsi0"
-            size: "{{ item.disk_size }}"
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm resize {{ item.id }} scsi0 {{ item.disk_size }}
+          loop: '{{ vm_list }}'
 
         - name: Configure VM cores
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            cores: "{{ item.cores }}"
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm set {{ item.id }} --cores {{ item.cores }}
+          when: item.cores is defined
+          loop: '{{ vm_list }}'
 
         - name: Configure VM memory
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            memory: "{{ item.memory }}"
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm set {{ item.id }} --memory {{ item.memory }}
+          when: item.memory is defined
+          loop: '{{ vm_list }}'
 
         - name: Configure network settings
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            net:
-              net0: "{{ item.net0 }}"
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm set {{ item.id }} --net0 {{ item.net0 }}
+          when: item.net0 is defined
+          loop: '{{ vm_list }}'
 
         - name: Configure IP settings
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            ipconfig0: "{{ item.ipconfig0 }}"
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm set {{ item.id }} --ipconfig0 {{ item.ipconfig0 }}
+          when: item.ipconfig0 is defined
+          loop: '{{ vm_list }}'
 
         - name: Start VMs
-          community.general.proxmox:
-            api_host: "{{ proxmox_host }}"
-            api_user: "{{ auth.user }}"
-            api_password: "{{ auth.password }}"
-            vmid: "{{ item.id }}"
-            state: started
-          loop: "{{ vm_list }}"
+          ansible.builtin.command: >
+            qm start {{ item.id }}
+          loop: '{{ vm_list }}'
 
-        - name: Wait for SSH to be available
-          ansible.builtin.wait_for:
-            port: 22
-            host: "{{ item.name }}"
-            timeout: 300
-          loop: "{{ vm_list }}"
+        - name: Wait for 180 seconds
+          ansible.builtin.pause:
+            seconds: 180
 
     # Установка QEMU Guest Agent
     - name: Install QEMU Guest Agent
       delegate_to: "{{ item.name }}"
-      ansible.builtin.apt:
-        name: qemu-guest-agent
-        state: present
-        update_cache: yes
-      loop: "{{ vm_list }}"
+      ansible.builtin.shell: |
+        apt-get update -y && apt-get install qemu-guest-agent -y && systemctl enable qemu-guest-agent && systemctl start qemu-guest-agent
+      loop: '{{ vm_list }}'
+
