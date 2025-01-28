@@ -1,5 +1,5 @@
 ---
-- name: Deploy Ubuntu Cloud VMs on Proxmox
+- name: Deploy Ubuntu Cloud VMs on Proxmox and Update Inventory
   hosts: proxmox
   gather_facts: no
   vars:
@@ -10,6 +10,7 @@
     cloud_image_filename: ubuntu-24.04-server-cloudimg-amd64.img
     base_id: 8000
     base_name: ubuntu-cloud
+    inventory_path: "/etc/ansible/inventory.ini"
     vm_list:
       - id: 201
         name: ubuntu-vm1
@@ -119,10 +120,32 @@
           ansible.builtin.pause:
             seconds: 180
 
-    # Установка QEMU Guest Agent
-    - name: Install QEMU Guest Agent
-      delegate_to: "{{ item.name }}"
-      ansible.builtin.shell: |
-        apt-get update -y && apt-get install qemu-guest-agent -y && systemctl enable qemu-guest-agent && systemctl start qemu-guest-agent
-      loop: '{{ vm_list }}'
+    # Получение IP-адресов и добавление в inventory.ini
+    - name: Get VM IP from DHCP lease and update inventory
+      block:
+        - name: Retrieve VM IP address
+          ansible.builtin.shell: "grep -i '{{ item.name }}' /var/lib/misc/dnsmasq.leases | awk '{print $3}'"
+          register: vm_ip
+          changed_when: false
+          loop: '{{ vm_list }}'
 
+        - name: Ensure IP address was retrieved
+          fail:
+            msg: "Failed to retrieve IP address for {{ item.item.name }}"
+          when: vm_ip.results | selectattr('stdout', 'equalto', '') | list | length > 0
+
+        - name: Add VM to inventory
+          ansible.builtin.lineinfile:
+            path: "{{ inventory_path }}"
+            line: "{{ item.item.name }} ansible_host={{ item.stdout }} ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa"
+            create: yes
+          when: item.stdout != ""
+          loop: "{{ vm_ip.results }}"
+
+        - name: Verify new VMs in inventory
+          command: "ansible-inventory --list"
+          register: inventory_check
+          changed_when: false
+
+        - debug:
+            msg: "{{ inventory_check.stdout }}"
