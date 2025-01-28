@@ -116,9 +116,9 @@
             qm start {{ item.id }}
           loop: '{{ vm_list }}'
 
-        - name: Wait for 180 seconds
+        - name: Wait for 30 seconds
           ansible.builtin.pause:
-            seconds: 180
+            seconds: 30
 
         # Получение IP-адресов и добавление в inventory.ini
     - name: Get VM IP from Proxmox Guest Agent
