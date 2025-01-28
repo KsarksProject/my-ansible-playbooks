@@ -120,32 +120,37 @@
           ansible.builtin.pause:
             seconds: 180
 
-    # Получение IP-адресов и добавление в inventory.ini
-    - name: Get VM IP from DHCP lease and update inventory
+        # Получение IP-адресов и добавление в inventory.ini
+    - name: Get VM IP from Proxmox Guest Agent
       block:
-        - name: Retrieve VM IP address
-          ansible.builtin.shell: "grep -i '{{ item.name }}' /var/lib/misc/dnsmasq.leases | awk '{print $3}'"
+        - name: Ensure QEMU Guest Agent is running on VMs
+          ansible.builtin.shell: |
+            qm guest exec {{ item.id }} -- /bin/sh -c 'ip -4 -o addr show eth0 | awk "{print \$4}" | cut -d/ -f1'
           register: vm_ip
           changed_when: false
-          loop: '{{ vm_list }}'
+          failed_when: vm_ip.rc != 0
+          loop: "{{ vm_list }}"
 
         - name: Ensure IP address was retrieved
-          fail:
+          ansible.builtin.fail:
             msg: "Failed to retrieve IP address for {{ item.item.name }}"
-          when: vm_ip.results | selectattr('stdout', 'equalto', '') | list | length > 0
+          when: item.stdout | trim == ""
+          loop: "{{ vm_ip.results }}"
 
         - name: Add VM to inventory
           ansible.builtin.lineinfile:
             path: "{{ inventory_path }}"
-            line: "{{ item.item.name }} ansible_host={{ item.stdout }} ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa"
+            line: "{{ item.item.name }} ansible_host={{ item.stdout | trim }} ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_rsa"
             create: yes
-          when: item.stdout != ""
+          when: item.stdout | trim != ""
           loop: "{{ vm_ip.results }}"
 
         - name: Verify new VMs in inventory
-          command: "ansible-inventory --list"
+          ansible.builtin.command: "ansible-inventory --list"
           register: inventory_check
           changed_when: false
 
-        - debug:
+        - name: Debug inventory output
+          ansible.builtin.debug:
             msg: "{{ inventory_check.stdout }}"
+
