@@ -14,8 +14,8 @@ awx_user = os.getenv("AWX_USER")
 awx_password = os.getenv("AWX_PASSWORD")
 job_template_id = 11  # ID шаблона в AWX
 extra_vars = {
-    "vm_name": "SRVCVD01",  # Имя создаваемой виртуальной машины
-    "hostname": "SRV-CVD-01"  # Хостнейм виртуальной машины
+    "vm_name": "SRVCVD02",  # Имя создаваемой виртуальной машины
+    "hostname": "SRV-CVD-02"  # Хостнейм виртуальной машины
 }
 
 # Параметры Proxmox
