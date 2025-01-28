@@ -85,7 +85,7 @@
     # Ожидание загрузки системы перед установкой QEMU Guest Agent
     - name: Wait for VMs to boot
       ansible.builtin.pause:
-        seconds: 180
+        seconds: 30
 
     # Установка QEMU Guest Agent в каждую VM
     - name: Install QEMU Guest Agent on VMs
