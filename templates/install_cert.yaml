@@ -1,0 +1,64 @@
+---
+- name: Generate and Deploy SSH Keys for AWX
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Ensure SSH key exists on AWX server
+      ansible.builtin.command:
+        cmd: ssh-keygen -t ed25519 -f ~/.ssh/id_awx -N ""
+        creates: ~/.ssh/id_awx
+
+    - name: Fetch public SSH key from AWX server
+      ansible.builtin.command:
+        cmd: cat ~/.ssh/id_awx.pub
+      register: ssh_pub_key
+      changed_when: false
+
+    - name: Display generated SSH key (for debugging)
+      ansible.builtin.debug:
+        msg: "{{ ssh_pub_key.stdout }}"
+
+- name: Copy SSH Key to Remote Ubuntu Servers
+  hosts: ubuntu_servers
+  become: true
+  gather_facts: true
+  vars:
+    ansible_ssh_pass: "{{ lookup('env', 'AWX_SSH_PASSWORD') }}"  # Пароль для первого входа
+  tasks:
+    - name: Ensure .ssh directory exists for root user
+      ansible.builtin.file:
+        path: /root/.ssh
+        state: directory
+        mode: "0700"
+
+    - name: Add public SSH key to authorized_keys
+      ansible.builtin.lineinfile:
+        path: /root/.ssh/authorized_keys
+        line: "{{ hostvars['localhost'].ssh_pub_key.stdout }}"
+        create: true
+        mode: "0600"
+
+    - name: Disable password authentication in SSH
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PasswordAuthentication"
+        line: "PasswordAuthentication no"
+      notify: Restart SSH
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+- name: Configure Inventory for Key-Based SSH
+  hosts: localhost
+  tasks:
+    - name: Update inventory to use SSH keys
+      ansible.builtin.lineinfile:
+        path: /etc/ansible/hosts
+        line: "{{ item }}"
+        create: true
+      loop:
+        - "[ubuntu_servers]"
+        - "172.28.1.20 ansible_user=root ansible_ssh_private_key_file=~/.ssh/id_awx"
